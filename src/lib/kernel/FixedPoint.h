@@ -8,10 +8,6 @@
  * new data type named fixed point.
  */
 typedef int32_t fixed_point;
-/**
- * new data type named fixed point extend.
- */
-typedef int64_t fixed_point_e;
 
 /**
  * multiplies two fixed point numbers.
