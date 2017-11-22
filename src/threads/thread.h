@@ -89,6 +89,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int basePriority;                   /* The base priority of the thread. Not affected by priority donation */
     int priority;                       /* Priority. */
+    int ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
     struct list locks;                  /* List of locks acquired by a thread */          
     struct list_elem allelem;           /* List element for all threads list. */
 
