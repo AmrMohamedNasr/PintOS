@@ -454,14 +454,13 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 /*
-* Returns true if a is less than b.
+* Returns true if a is greater than b.
 * The comparison function to be given to the list.
 */
-bool priority_less_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
-  /**
-  * Please implement me.
-  **/
-  return true;
+bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
+  struct thread * t1 = list_entry (a, struct thread, allelem);
+  struct thread * t2 = list_entry (b, struct thread, allelem);
+  return t1->priority >= t2->priority;
 }
 /* Does basic initialization of T as a blocked thread named
    NAME. */
@@ -477,6 +476,9 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->base_priority = priority;
+  t->ticks_remaining = 0;
+  list_init(&t->locks);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

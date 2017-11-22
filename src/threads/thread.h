@@ -87,7 +87,7 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int basePriority;                   /* The base priority of the thread. Not affected by priority donation */
+    int base_priority;                   /* The base priority of the thread. Not affected by priority donation */
     int priority;                       /* Priority. */
     int ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
     struct list locks;                  /* List of locks acquired by a thread */          
@@ -141,7 +141,7 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 /*
-* Returns true if a is less than b.
+* Returns true if a is greater than b.
 */
-bool priority_less_func (const struct list_elem *a,const struct list_elem *b, void * aux);
+bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux);
 #endif /* threads/thread.h */
