@@ -94,6 +94,8 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
+  thread_current ()-> ticks_remaining = ticks;
+
   list_push_front (busy_waiters, &thread_current ()->elem);
 
   thread_block ();
@@ -178,8 +180,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   for (e = list_begin (busy_waiters); e != list_end (busy_waiters); e = list_next (e)){
 
-        //decrease ticks for each one
-        if( == 0){
+        (thread_current ()-> ticks_remaining)--;
+
+        if((thread_current ()-> ticks_remaining) == 0){
         thread_unblock (list_entry(e, struct thread, elem));
         e = list_prev(list_remove (e));
         }
