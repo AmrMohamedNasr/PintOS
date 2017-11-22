@@ -2,8 +2,12 @@
 
 
  fixed_point fixed_point_mul(fixed_point x, fixed_point y) {
-    return ( (fixed_point_e) x * (fixed_point_e) y) >> 14;
+    // right shift 14 bits after multiplication.
+    //to return correct fixed point representation of result.
+    return ( x  *  y ) >> 14;
 }
  fixed_point fixed_point_div(fixed_point x, fixed_point y) {
-    return ( (fixed_point_e) x << 14  / (fixed_point_e) y) ;
+    // left shift 14 bits before division.
+    // to void error and it returns the correct representation of fixed point.
+    return (  x << 14 ) / y  ;
 }
