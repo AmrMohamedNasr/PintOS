@@ -453,7 +453,16 @@ is_thread (struct thread *t)
 {
   return t != NULL && t->magic == THREAD_MAGIC;
 }
-
+/*
+* Returns true if a is less than b.
+* The comparison function to be given to the list.
+*/
+bool priority_less_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
+  /**
+  * Please implement me.
+  **/
+  return true;
+}
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
