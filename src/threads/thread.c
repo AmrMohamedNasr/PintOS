@@ -229,11 +229,11 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
   if (thread_mlfqs) {
-    if (thread_current() != initial_thread) {
+    t->nice = thread_current ()->nice;
+    if (thread_current() != idle_thread) {
       t->recent_cpu = thread_current() ->recent_cpu;
-      t->nice = thread_current() ->nice;
+      t->priority = calculate_priority(t);
     }
-    t->priority = calculate_priority(t);
   }
   intr_set_level (old_level);
 
@@ -455,15 +455,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
-  return round_fixed_point_number_to_integer(fixed_point_mul(integer_to_fixed_point(100),load_avg));
+  return round_fixed_point_number_to_integer(100 * load_avg);
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  return round_fixed_point_number_to_integer(
-            fixed_point_mul(thread_current()->recent_cpu, integer_to_fixed_point(100)));
+  return round_fixed_point_number_to_integer( thread_current()->recent_cpu * 100);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

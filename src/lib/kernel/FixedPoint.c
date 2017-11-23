@@ -21,8 +21,10 @@ int fixed_point_to_integer(fixed_point x) {
 }
 
 int round_fixed_point_number_to_integer(fixed_point x) {
-    if ( (x >> 14) >= 0 ) {
-     return ((x + (((fixed_point) 1) << (Fixed_Point_FBits - 1))) >> Fixed_Point_FBits);
+    fixed_point f = ((fixed_point)1) << Fixed_Point_FBits;
+    if ( x >= 0 ) {
+        return (x + (f / 2)) / f;
+    } else {
+        return (x - (f / 2)) / f;
     }
-    return ((x - (((fixed_point) 1) << (Fixed_Point_FBits - 1))) >> Fixed_Point_FBits);
 }
