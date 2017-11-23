@@ -563,8 +563,8 @@ int calculate_priority(struct thread * t) {
 fixed_point calculate_recent_cpu(struct thread * t) {
   return fixed_point_mul(
             fixed_point_div(
-              2 * load_avg,
-              2 * load_avg + integer_to_fixed_point(1)),
+              fixed_point_mul(integer_to_fixed_point(2), load_avg),
+              fixed_point_mul(integer_to_fixed_point(2), load_avg) + integer_to_fixed_point(1)),
             t->recent_cpu)
          + integer_to_fixed_point(t->nice);
 }
