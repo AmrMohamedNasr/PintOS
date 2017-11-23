@@ -138,6 +138,7 @@ void thread_set_priority (int);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
+void get_donated_priority(struct thread *t);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 /*

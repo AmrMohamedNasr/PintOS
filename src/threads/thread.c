@@ -134,9 +134,16 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Enforce preemption. */
+  /* Enforce preemption.
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+	*/
+	if (!list_empty(&ready_list)) {
+	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+	  if (thread_current ()->priority < top_t->priority || thread_current () == idle_thread) {
+	  	intr_yield_on_return ();
+	  }
+	}
 }
 
 /* Prints thread statistics. */
@@ -245,7 +252,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem, &priority_greater_func, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -316,7 +323,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  	list_insert_ordered(&ready_list, &cur->elem, &priority_greater_func, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -338,12 +345,32 @@ thread_foreach (thread_action_func *func, void *aux)
       func (t, aux);
     }
 }
-
+/* 
+* Sets the current thread priority according to its base priority or its highest donater priority.
+*/
+void get_donated_priority(struct thread * t) {
+	t->priority = t->base_priority;
+	struct list_elem * e;
+	if (!list_empty(&t->locks)) {
+		for (e = list_begin (&t->locks); e != list_end (&t->locks);
+	           e = list_next (e))
+        {
+	    	struct lock *l = list_entry(e, struct lock, elem);
+	    	if (!list_empty(&l->semaphore.waiters)) {
+	    		struct thread * lt = list_entry(list_front(&l->semaphore.waiters), struct thread, elem);
+	    		if (lt->priority > t->priority) {
+	    			t->priority = lt->priority;
+	    		}
+	    	}
+    	}
+	}
+}
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  thread_current ()->base_priority = new_priority;
+  get_donated_priority(thread_current ());
 }
 
 /* Returns the current thread's priority. */
