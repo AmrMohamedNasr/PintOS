@@ -139,12 +139,6 @@ thread_tick (void)
     intr_yield_on_return ();
 	*/
 	thread_ticks++;
-	if (!list_empty(&ready_list)) {
-	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-	  if (thread_current ()->priority < top_t->priority || thread_current () == idle_thread) {
-	  	intr_yield_on_return ();
-	  }
-	}
 }
 
 /* Prints thread statistics. */
@@ -216,7 +210,12 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  if (!list_empty(&ready_list)) {
+	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+	  if (thread_current ()->priority < top_t->priority) {
+	  	thread_yield ();
+	  }
+	}
   return tid;
 }
 
@@ -370,8 +369,18 @@ void get_donated_priority(struct thread * t) {
 void
 thread_set_priority (int new_priority) 
 {
+	enum intr_level old_level;
+  ASSERT (!intr_context ());
+  old_level = intr_disable ();
   thread_current ()->base_priority = new_priority;
   get_donated_priority(thread_current ());
+  intr_set_level(old_level);
+  if (!list_empty(&ready_list)) {
+	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+	  if (thread_current ()->priority < top_t->priority) {
+	  	thread_yield ();
+	  }
+	}
 }
 
 /* Returns the current thread's priority. */
