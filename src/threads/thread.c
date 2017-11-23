@@ -548,20 +548,26 @@ bool priority_greater_func (const struct list_elem *a,const struct list_elem *b,
   calculate the priority according to recent_cpu and nice values and return the value clamped to a suitable range.
 */
 int calculate_priority(struct thread * t) {
-  return PRI_MAX -
+  int temp_prio = PRI_MAX -
                 fixed_point_to_integer(fixed_point_div(t->recent_cpu, integer_to_fixed_point(4))) -
                 t->nice * 2;
+  if (temp_prio > PRI_MAX) {
+    temp_prio = PRI_MAX;
+  } else if (temp_prio < PRI_MIN) {
+    temp_prio = PRI_MIN;
+  }
+  return temp_prio;
 }
 /*
   Calculates recent cpu and returns the calculated value.
 */
 fixed_point calculate_recent_cpu(struct thread * t) {
   return fixed_point_mul(
-                                    fixed_point_div(
-                                        fixed_point_mul(integer_to_fixed_point(2),load_avg),
-                                        fixed_point_mul(integer_to_fixed_point(2),load_avg) +
-                                                     fixed_point_to_integer(1)),
-                                        t->recent_cpu) + integer_to_fixed_point(t->nice);
+            fixed_point_div(
+              2 * load_avg,
+              2 * load_avg + integer_to_fixed_point(1)),
+            t->recent_cpu)
+         + integer_to_fixed_point(t->nice);
 }
 /*
   Calculates the load average and returns the calculated value.
@@ -571,10 +577,17 @@ fixed_point calculate_load_avg(void) {
   if (thread_current () != idle_thread) {
     ready_size++;
   }
-  return fixed_point_mul(fixed_point_div(integer_to_fixed_point(59),
-                                             integer_to_fixed_point(60)), load_avg) +
-             fixed_point_mul(fixed_point_div(integer_to_fixed_point(1),
-                                             integer_to_fixed_point(60)), integer_to_fixed_point(ready_size));
+  return fixed_point_mul(
+          fixed_point_div(
+            integer_to_fixed_point(59),
+            integer_to_fixed_point(60)),
+          load_avg)
+        +
+          fixed_point_mul(
+            fixed_point_div(
+              integer_to_fixed_point(1),
+              integer_to_fixed_point(60)),
+            integer_to_fixed_point(ready_size));
 }
 static void update_priority(struct thread * t, void * aux) {
   if (t != initial_thread && t != idle_thread) {
