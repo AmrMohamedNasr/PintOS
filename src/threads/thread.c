@@ -138,6 +138,7 @@ thread_tick (void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
 	*/
+	thread_ticks++;
 	if (!list_empty(&ready_list)) {
 	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
 	  if (thread_current ()->priority < top_t->priority || thread_current () == idle_thread) {
@@ -485,9 +486,9 @@ is_thread (struct thread *t)
 * The comparison function to be given to the list.
 */
 bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
-  struct thread * t1 = list_entry (a, struct thread, allelem);
-  struct thread * t2 = list_entry (b, struct thread, allelem);
-  return t1->priority >= t2->priority;
+  struct thread * t1 = list_entry (a, struct thread, elem);
+  struct thread * t2 = list_entry (b, struct thread, elem);
+  return t1->priority > t2->priority;
 }
 /* Does basic initialization of T as a blocked thread named
    NAME. */
