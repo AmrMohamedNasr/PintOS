@@ -463,7 +463,7 @@ int
 thread_get_recent_cpu (void)
 {
   return round_fixed_point_number_to_integer(
-            fixed_point_mul(thread_current()->recent_cpu, integer_to_fixed_point(100));
+            fixed_point_mul(thread_current()->recent_cpu, integer_to_fixed_point(100)));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -548,31 +548,32 @@ bool priority_greater_func (const struct list_elem *a,const struct list_elem *b,
   calculate the priority according to recent_cpu and nice values and return the value clamped to a suitable range.
 */
 int calculate_priority(struct thread * t) {
-  t->priority = PRI_MAX -
+  return PRI_MAX -
                 fixed_point_to_integer(fixed_point_div(t->recent_cpu, integer_to_fixed_point(4))) -
                 t->nice * 2;
-  return t->priority;
 }
 /*
   Calculates recent cpu and returns the calculated value.
 */
 fixed_point calculate_recent_cpu(struct thread * t) {
-  t->recent_cpu = fixed_point_mul(
+  return fixed_point_mul(
                                     fixed_point_div(
                                         fixed_point_mul(integer_to_fixed_point(2),load_avg),
                                         fixed_point_mul(integer_to_fixed_point(2),load_avg) + 1),
-                                        t->recent_cpu) + integer_to_fixed_point(nice);
-  return t->recent_cpu;
+                                        t->recent_cpu) + integer_to_fixed_point(t->nice);
 }
 /*
   Calculates the load average and returns the calculated value.
 */
 fixed_point calculate_load_avg(void) {
-  load_avg = fixed_point_mul(fixed_point_div(integer_to_fixed_point(59),
+  int ready_size = list_size(&ready_list);
+  if (thread_current () != idle_thread) {
+    ready_size++;
+  }
+  return fixed_point_mul(fixed_point_div(integer_to_fixed_point(59),
                                              integer_to_fixed_point(60)), load_avg) +
              fixed_point_mul(fixed_point_div(integer_to_fixed_point(1),
-                                             integer_to_fixed_point(60)), list_size(&all_list));
-  return load_avg;
+                                             integer_to_fixed_point(60)), integer_to_fixed_point(ready_size));
 }
 static void update_priority(struct thread * t, void * aux) {
   if (t != initial_thread && t != idle_thread) {
