@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <FixedPoint.h>
 #include <stdint.h>
 
 /* States in a thread's life cycle. */
@@ -92,7 +93,9 @@ struct thread
     int ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
     struct list locks;                  /* List of locks acquired by a thread */          
     struct list_elem allelem;           /* List element for all threads list. */
-
+    /* Data for BSD scheduler */
+    fixed_point recent_cpu;             /* Recent cpu usage of thread */
+    int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -145,4 +148,16 @@ int thread_get_load_avg (void);
 * Returns true if a is greater than b.
 */
 bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux);
+/*
+  calculate the priority according to recent_cpu and nice values and return the value clamped to a suitable range.
+*/
+int calculate_priority(struct thread * t);
+/*
+  Calculates recent cpu and returns the calculated value.
+*/
+fixed_point calculate_recent_cpu(struct thread * t);
+/*
+  Calculates the load average and returns the calculated value.
+*/
+fixed_point calculate_load_avg(void);
 #endif /* threads/thread.h */
