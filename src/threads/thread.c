@@ -144,7 +144,7 @@ thread_tick (void)
 	*/
   if (thread_mlfqs) {
     if (thread_current () != idle_thread) {
-      thread_current () ->recent_cpu++;
+      thread_current ()->recent_cpu += integer_to_fixed_point(1);
     }
     if (timer_ticks () % TIMER_FREQ == 0) {
       load_avg = calculate_load_avg();
