@@ -427,15 +427,28 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
-  /* Not yet implemented. */
+  if (thread_mlfqs) {
+    enum intr_level old_level;
+    ASSERT (!intr_context ());
+    ASSERT(-20 <= nice && nice <= 20);
+    old_level = intr_disable ();
+    thread_current ()->nice = nice;
+    thread_current ()->priority = calculate_priority(thread_current ());
+    intr_set_level(old_level);
+    if (!list_empty(&ready_list)) {
+      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+      if (thread_current ()->priority < top_t->priority) {
+        thread_yield ();
+      }
+    }
+  }
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->nice;
 }
 
 /* Returns 100 times the system load average. */
