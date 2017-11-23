@@ -144,7 +144,7 @@ thread_tick (void)
 	*/
   if (thread_mlfqs) {
     if (thread_current () != idle_thread) {
-      thread_current () ->recent_cpu++;
+      thread_current ()->recent_cpu += integer_to_fixed_point(1);
     }
     if (timer_ticks () % TIMER_FREQ == 0) {
       load_avg = calculate_load_avg();
@@ -427,7 +427,21 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED)
 {
-  thread_current()->nice = nice;
+  if (thread_mlfqs) {
+    enum intr_level old_level;
+    ASSERT (!intr_context ());
+    ASSERT(-20 <= nice && nice <= 20);
+    old_level = intr_disable();
+    thread_current ()->nice = nice;
+    thread_current ()->priority = calculate_priority(thread_current ());
+    intr_set_level(old_level);
+    if (!list_empty(&ready_list)) {
+      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+      if (thread_current ()->priority < top_t->priority) {
+        thread_yield ();
+      }
+    }
+  }
 }
 
 /* Returns the current thread's nice value. */
