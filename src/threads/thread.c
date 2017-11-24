@@ -393,7 +393,7 @@ void get_donated_priority(struct thread * t, int donated_pri) {
           {
   	    	struct lock *l = list_entry(e, struct lock, elem);
   	    	if (!list_empty(&l->semaphore.waiters)) {
-  	    		struct thread * lt = list_entry(list_front(&l->semaphore.waiters), struct thread, elem);
+  	    		struct thread * lt = list_entry(list_max(&l->semaphore.waiters, &priority_greater_func, NULL), struct thread, elem);
   	    		if (lt->priority > t->priority) {
   	    			t->priority = lt->priority;
   	    		}
