@@ -398,6 +398,17 @@ void get_donated_priority(struct thread * t) {
   	    	}
       	}
   	}
+    struct lock * l = t->blocked_on_lock;
+    struct thread * lt = t;
+    while (l != NULL) {
+      if (l->holder->priority < lt->priority) {
+        l->holder->priority = lt->priority;
+        lt = l->holder;
+        l = lt->blocked_on_lock;
+      } else {
+        l = NULL;
+      }
+    }
   }
 }
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -619,6 +630,7 @@ init_thread (struct thread *t, const char *name, int priority)
   } else {
     t->priority = priority;
     t->base_priority = priority;
+    t->blocked_on_lock = NULL;
   }
   t->ticks_remaining = 0;
   list_init(&t->locks);
