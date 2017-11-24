@@ -143,20 +143,21 @@ thread_tick (void)
     intr_yield_on_return ();
 	*/
   if (thread_mlfqs) {
-    if (thread_current () != idle_thread) {
-      thread_current ()->recent_cpu += integer_to_fixed_point(1);
+    int64_t ticks_timer = timer_ticks ();
+    if (t != idle_thread) {
+      t->recent_cpu += integer_to_fixed_point(1);
     }
-    if (timer_ticks () % TIMER_FREQ == 0) {
+    if (ticks_timer % TIMER_FREQ == 0) {
       load_avg = calculate_load_avg();
       thread_foreach(&update_recent_cpu, NULL);
     }
-    if (thread_ticks % 4 == 0) {
+    if (ticks_timer % 4 == 0) {
       thread_foreach(&update_priority, NULL);
       list_sort(&ready_list, &priority_greater_func, NULL);
     }
     if (!list_empty(&ready_list)) {
       struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-      if (thread_current ()->priority < top_t->priority) {
+      if (t->priority < top_t->priority) {
         intr_yield_on_return ();
       }
     }
@@ -228,17 +229,19 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-  if (thread_mlfqs) {
-    if (thread_current() != initial_thread) {
-      t->recent_cpu = thread_current() ->recent_cpu;
-      t->nice = thread_current() ->nice;
-    }
-    t->priority = calculate_priority(t);
-  }
   intr_set_level (old_level);
+
+  if (thread_mlfqs) {
+    if (thread_current () != initial_thread) {
+      t->nice = thread_current ()->nice;
+      t->recent_cpu = calculate_recent_cpu(thread_current ());
+      t->priority = calculate_priority(t);
+    }
+  }
 
   /* Add to run queue. */
   thread_unblock (t);
+  
   if (!list_empty(&ready_list)) {
 	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
 	  if (thread_current ()->priority < top_t->priority) {
@@ -364,15 +367,16 @@ void
 thread_foreach (thread_action_func *func, void *aux)
 {
   struct list_elem *e;
-
+  struct thread *t;
   ASSERT (intr_get_level () == INTR_OFF);
-
-  for (e = list_begin (&all_list); e != list_end (&all_list);
-       e = list_next (e))
-    {
-      struct thread *t = list_entry (e, struct thread, allelem);
-      func (t, aux);
-    }
+  if (!list_empty(&all_list)) {
+    for (e = list_begin (&all_list); e != list_end (&all_list);
+         e = list_next (e))
+      {
+        t = list_entry (e, struct thread, allelem);
+        func (t, aux);
+      }
+  }
 }
 /*
 * Sets the current thread priority according to its base priority or its highest donater priority.
@@ -433,6 +437,7 @@ thread_set_nice (int nice UNUSED)
     ASSERT(-20 <= nice && nice <= 20);
     old_level = intr_disable();
     thread_current ()->nice = nice;
+    thread_current ()->recent_cpu = calculate_recent_cpu(thread_current ());
     thread_current ()->priority = calculate_priority(thread_current ());
     intr_set_level(old_level);
     if (!list_empty(&ready_list)) {
@@ -455,15 +460,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void)
 {
-  return round_fixed_point_number_to_integer(fixed_point_mul(integer_to_fixed_point(100),load_avg));
+  return round_fixed_point_number_to_integer(100 * load_avg);
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void)
 {
-  return round_fixed_point_number_to_integer(
-            fixed_point_mul(thread_current()->recent_cpu, integer_to_fixed_point(100)));
+  return round_fixed_point_number_to_integer( thread_current()->recent_cpu * 100);
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -549,7 +553,7 @@ bool priority_greater_func (const struct list_elem *a,const struct list_elem *b,
 */
 int calculate_priority(struct thread * t) {
   int temp_prio = PRI_MAX -
-                fixed_point_to_integer(fixed_point_div(t->recent_cpu, integer_to_fixed_point(4))) -
+                fixed_point_to_integer(t->recent_cpu / 4) -
                 t->nice * 2;
   if (temp_prio > PRI_MAX) {
     temp_prio = PRI_MAX;
@@ -562,12 +566,9 @@ int calculate_priority(struct thread * t) {
   Calculates recent cpu and returns the calculated value.
 */
 fixed_point calculate_recent_cpu(struct thread * t) {
-  return fixed_point_mul(
-            fixed_point_div(
-              fixed_point_mul(integer_to_fixed_point(2), load_avg),
-              fixed_point_mul(integer_to_fixed_point(2), load_avg) + integer_to_fixed_point(1)),
-            t->recent_cpu)
-         + integer_to_fixed_point(t->nice);
+  fixed_point load = 2 * load_avg;
+  fixed_point coeff = fixed_point_div(load, load + integer_to_fixed_point(1));
+  return fixed_point_mul(coeff, t->recent_cpu) + integer_to_fixed_point(t->nice);
 }
 /*
   Calculates the load average and returns the calculated value.
@@ -583,19 +584,18 @@ fixed_point calculate_load_avg(void) {
             integer_to_fixed_point(60)),
           load_avg)
         +
-          fixed_point_mul(
-            fixed_point_div(
+            (fixed_point_div(
               integer_to_fixed_point(1),
-              integer_to_fixed_point(60)),
-            integer_to_fixed_point(ready_size));
+              integer_to_fixed_point(60))
+            * ready_size);
 }
 static void update_priority(struct thread * t, void * aux) {
-  if (t != initial_thread && t != idle_thread) {
+  if (t != idle_thread) {
     t->priority = calculate_priority(t);
   }
 }
 static void update_recent_cpu(struct thread * t, void * aux) {
-  if (t != initial_thread && t != idle_thread) {
+  if (t != idle_thread) {
     t->recent_cpu = calculate_recent_cpu(t);
   }
 }
@@ -612,11 +612,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
-  t->base_priority = priority;
+  if (thread_mlfqs) {
+    t->nice = 0;
+    t->recent_cpu = 0;
+    t->priority = PRI_MAX;
+  } else {
+    t->priority = priority;
+    t->base_priority = priority;
+  }
   t->ticks_remaining = 0;
-  t->nice = 0;
-  t->recent_cpu = 0;
   list_init(&t->locks);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
