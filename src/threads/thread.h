@@ -93,6 +93,7 @@ struct thread
     int ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
     struct list locks;                  /* List of locks acquired by a thread */          
     struct list_elem allelem;           /* List element for all threads list. */
+    struct lock *blocked_on_lock;       /* The lock currently blocking the thread. Null if there isn't. */
     /* Data for BSD scheduler */
     fixed_point recent_cpu;             /* Recent cpu usage of thread */
     int nice;                           /* Nice value */
