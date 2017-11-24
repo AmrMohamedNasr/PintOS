@@ -2,10 +2,6 @@
 #define FIXEDPOINT_INCLUDED
 
 #include<stdint.h>
-// representation of fixed point.
-#define Fixed_Point_FBits 14
-
-#define FIXED_CONST		((fixed_point)(((fixed_point)1) << Fixed_Point_FBits))
 /**
  * new data type named fixed point.
  */
@@ -14,6 +10,12 @@ typedef int32_t fixed_point;
  * new data type named fixed point extend.
  */
 typedef int64_t fixed_point_e;
+
+// representation of fixed point.
+#define Fixed_Point_FBits 14
+
+#define FIXED_CONST		((fixed_point)(((fixed_point)1) << Fixed_Point_FBits))
+
 /**
  * multiplies two fixed point numbers.
  */
