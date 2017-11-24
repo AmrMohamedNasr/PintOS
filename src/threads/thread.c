@@ -229,17 +229,19 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+  intr_set_level (old_level);
+
   if (thread_mlfqs) {
-    t->nice = thread_current ()->nice;
-    if (thread_current() != idle_thread) {
-      t->recent_cpu = thread_current() ->recent_cpu;
+    if (thread_current () != initial_thread) {
+      t->nice = thread_current ()->nice;
+      t->recent_cpu = calculate_recent_cpu(thread_current ());
       t->priority = calculate_priority(t);
     }
   }
-  intr_set_level (old_level);
 
   /* Add to run queue. */
   thread_unblock (t);
+  
   if (!list_empty(&ready_list)) {
 	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
 	  if (thread_current ()->priority < top_t->priority) {
@@ -551,7 +553,7 @@ bool priority_greater_func (const struct list_elem *a,const struct list_elem *b,
 */
 int calculate_priority(struct thread * t) {
   int temp_prio = PRI_MAX -
-                fixed_point_to_integer(fixed_point_div(t->recent_cpu, integer_to_fixed_point(4))) -
+                fixed_point_to_integer(t->recent_cpu / 4) -
                 t->nice * 2;
   if (temp_prio > PRI_MAX) {
     temp_prio = PRI_MAX;
@@ -564,12 +566,9 @@ int calculate_priority(struct thread * t) {
   Calculates recent cpu and returns the calculated value.
 */
 fixed_point calculate_recent_cpu(struct thread * t) {
-  return fixed_point_mul(
-            fixed_point_div(
-              2 * load_avg,
-              2 * load_avg + integer_to_fixed_point(1)),
-            t->recent_cpu)
-         + integer_to_fixed_point(t->nice);
+  fixed_point load = 2 * load_avg;
+  fixed_point coeff = fixed_point_div(load, load + integer_to_fixed_point(1));
+  return fixed_point_mul(coeff, t->recent_cpu) + integer_to_fixed_point(t->nice);
 }
 /*
   Calculates the load average and returns the calculated value.
@@ -591,12 +590,12 @@ fixed_point calculate_load_avg(void) {
             * ready_size);
 }
 static void update_priority(struct thread * t, void * aux) {
-  if (t != initial_thread && t != idle_thread) {
+  if (t != idle_thread) {
     t->priority = calculate_priority(t);
   }
 }
 static void update_recent_cpu(struct thread * t, void * aux) {
-  if (t != initial_thread && t != idle_thread) {
+  if (t != idle_thread) {
     t->recent_cpu = calculate_recent_cpu(t);
   }
 }
@@ -613,11 +612,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
-  t->base_priority = priority;
+  if (thread_mlfqs) {
+    t->nice = 0;
+    t->recent_cpu = 0;
+    t->priority = PRI_MAX;
+  } else {
+    t->priority = priority;
+    t->base_priority = priority;
+  }
   t->ticks_remaining = 0;
-  t->nice = 0;
-  t->recent_cpu = 0;
   list_init(&t->locks);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
