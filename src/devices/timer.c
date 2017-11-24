@@ -180,8 +180,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   struct list_elem *e;
+  struct thread * t;
   for (e = list_rbegin (&busy_waiters); !list_empty (&busy_waiters) && e != list_rend (&busy_waiters); e = list_prev (e)) {
-    struct thread * t = list_entry(e, struct thread, elem);
+    t = list_entry(e, struct thread, elem);
     t-> ticks_remaining--;
     if(t-> ticks_remaining <= 0){
       e = list_remove(e);
