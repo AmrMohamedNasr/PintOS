@@ -138,10 +138,7 @@ thread_tick (void)
   else
     kernel_ticks++;
 
-  /* Enforce preemption.
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
-	*/
+
   if (thread_mlfqs) {
     int64_t ticks_timer = timer_ticks ();
     if (t != idle_thread) {
@@ -155,16 +152,25 @@ thread_tick (void)
       thread_foreach(&update_priority, NULL);
       list_sort(&ready_list, &priority_greater_func, NULL);
     }
-    if (!list_empty(&ready_list)) {
-      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-      if (t->priority < top_t->priority) {
-        intr_yield_on_return ();
-      }
+    
+  }
+  if (!list_empty(&ready_list)) {
+    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    if (t->priority < top_t->priority) {
+      intr_yield_on_return ();
     }
   }
 	thread_ticks++;
 }
 
+void thread_swap_to_highest_pri(void) {
+  if (!list_empty(&ready_list)) {
+    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    if (thread_current ()->priority < top_t->priority) {
+      thread_yield ();
+    }
+  }
+}
 /* Prints thread statistics. */
 void
 thread_print_stats (void)
@@ -241,13 +247,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  
-  if (!list_empty(&ready_list)) {
-	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-	  if (thread_current ()->priority < top_t->priority) {
-	  	thread_yield ();
-	  }
-	}
+  thread_swap_to_highest_pri();
   return tid;
 }
 
@@ -381,9 +381,12 @@ thread_foreach (thread_action_func *func, void *aux)
 /*
 * Sets the current thread priority according to its base priority or its highest donater priority.
 */
-void get_donated_priority(struct thread * t) {
+void get_donated_priority(struct thread * t, int donated_pri) {
   if (!thread_mlfqs) {
   	t->priority = t->base_priority;
+    if (donated_pri > t->priority) {
+      t->priority = donated_pri;
+    }
   	struct list_elem * e;
   	if (!list_empty(&t->locks)) {
   		for (e = list_begin (&t->locks); e != list_end (&t->locks);
@@ -420,7 +423,7 @@ thread_set_priority (int new_priority)
     ASSERT (!intr_context ());
     old_level = intr_disable ();
     thread_current ()->base_priority = new_priority;
-    get_donated_priority(thread_current ());
+    get_donated_priority(thread_current (), new_priority);
     intr_set_level(old_level);
     if (!list_empty(&ready_list)) {
   	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);

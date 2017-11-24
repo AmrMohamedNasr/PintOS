@@ -142,7 +142,7 @@ void thread_set_priority (int);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
-void get_donated_priority(struct thread *t);
+void get_donated_priority(struct thread *t, int donated_pri);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 /*
@@ -161,4 +161,8 @@ fixed_point calculate_recent_cpu(struct thread * t);
   Calculates the load average and returns the calculated value.
 */
 fixed_point calculate_load_avg(void);
+/* Swaps to the highest priority in the already sorted ready queue. 
+  Should never be called from an interrupt context.
+*/
+void thread_swap_to_highest_pri(void);
 #endif /* threads/thread.h */
