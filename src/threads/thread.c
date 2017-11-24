@@ -152,13 +152,12 @@ thread_tick (void)
       thread_foreach(&update_priority, NULL);
       list_sort(&ready_list, &priority_greater_func, NULL);
     }
-    
-  }
-  if (!list_empty(&ready_list)) {
-    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-    if (t->priority < top_t->priority) {
-      intr_yield_on_return ();
-    }
+    if (!list_empty(&ready_list)) {
+      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+      if (t->priority < top_t->priority) {
+        intr_yield_on_return ();
+      }
+    } 
   }
 	thread_ticks++;
 }
