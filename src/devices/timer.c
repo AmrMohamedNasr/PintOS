@@ -94,9 +94,9 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
-  thread_current ()-> ticks_remaining = ticks;
-
   enum intr_level old_level = intr_disable ();
+  
+  thread_current ()-> ticks_remaining = ticks;
 
   list_push_front (&busy_waiters, &thread_current ()->elem);
 

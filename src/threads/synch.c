@@ -208,7 +208,6 @@ lock_acquire (struct lock *lock)
       get_donated_priority(lock->holder , thread_current()->priority);
   }
   sema_down (&lock->semaphore);
-  //nested_donate (lock->holder);
   list_push_front(&thread_current ()->locks , &lock->elem);
   thread_current ()->blocked_on_lock = NULL;
   lock->holder = thread_current ();

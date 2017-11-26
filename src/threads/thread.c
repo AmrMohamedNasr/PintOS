@@ -152,22 +152,30 @@ thread_tick (void)
       thread_foreach(&update_priority, NULL);
       list_sort(&ready_list, &priority_greater_func, NULL);
     }
-    if (!list_empty(&ready_list)) {
-      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-      if (t->priority < top_t->priority) {
-        intr_yield_on_return ();
-      }
-    } 
   }
+  if (!list_empty(&ready_list)) {
+    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    if (t->priority < top_t->priority) {
+      intr_yield_on_return ();
+    }
+  } 
 	thread_ticks++;
 }
 
 void thread_swap_to_highest_pri(void) {
+  enum intr_level old_level;
+  bool inter_off = true;
+  old_level = intr_disable ();
   if (!list_empty(&ready_list)) {
     struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
     if (thread_current ()->priority < top_t->priority) {
+      inter_off = false;
+      intr_set_level (old_level);
       thread_yield ();
     }
+  }
+  if (inter_off) {
+    intr_set_level (old_level);
   }
 }
 /* Prints thread statistics. */
@@ -382,6 +390,8 @@ thread_foreach (thread_action_func *func, void *aux)
 */
 void get_donated_priority(struct thread * t, int donated_pri) {
   if (!thread_mlfqs) {
+    enum intr_level old_level;
+    old_level = intr_disable ();
   	t->priority = t->base_priority;
     if (donated_pri > t->priority) {
       t->priority = donated_pri;
@@ -411,6 +421,7 @@ void get_donated_priority(struct thread * t, int donated_pri) {
         l = NULL;
       }
     }
+    intr_set_level(old_level);
   }
 }
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -424,12 +435,7 @@ thread_set_priority (int new_priority)
     thread_current ()->base_priority = new_priority;
     get_donated_priority(thread_current (), new_priority);
     intr_set_level(old_level);
-    if (!list_empty(&ready_list)) {
-  	  struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-  	  if (thread_current ()->priority < top_t->priority) {
-  	  	thread_yield ();
-  	  }
-  	}
+    thread_swap_to_highest_pri();
   }
 }
 
@@ -453,12 +459,7 @@ thread_set_nice (int nice UNUSED)
     thread_current ()->recent_cpu = calculate_recent_cpu(thread_current ());
     thread_current ()->priority = calculate_priority(thread_current ());
     intr_set_level(old_level);
-    if (!list_empty(&ready_list)) {
-      struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
-      if (thread_current ()->priority < top_t->priority) {
-        thread_yield ();
-      }
-    }
+    thread_swap_to_highest_pri();
   }
 }
 
@@ -587,6 +588,7 @@ fixed_point calculate_recent_cpu(struct thread * t) {
   Calculates the load average and returns the calculated value.
 */
 fixed_point calculate_load_avg(void) {
+  ASSERT (intr_get_level () == INTR_OFF);
   int ready_size = list_size(&ready_list);
   if (thread_current () != idle_thread) {
     ready_size++;
