@@ -105,7 +105,7 @@ shutdown_power_off (void)
      QEMU, but not by physical hardware. */
   for (p = s; *p != '\0'; p++)
     outb (0x8900, *p);
-
+  shutdown_reboot();
   /* This will power off a VMware VM if "gui.exitOnCLIHLT = TRUE"
      is set in its configuration file.  (The "pintos" script does
      that automatically.)  */

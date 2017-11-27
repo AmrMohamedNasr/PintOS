@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <FixedPoint.h>
 #include <stdint.h>
 
 /* States in a thread's life cycle. */
@@ -87,12 +88,15 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int basePriority;                   /* The base priority of the thread. Not affected by priority donation */
+    int base_priority;                   /* The base priority of the thread. Not affected by priority donation */
     int priority;                       /* Priority. */
-    int ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
+    int64_t ticks_remaining;                /* Ticks remaining to wake up in case of sleeping */
     struct list locks;                  /* List of locks acquired by a thread */          
     struct list_elem allelem;           /* List element for all threads list. */
-
+    struct lock *blocked_on_lock;       /* The lock currently blocking the thread. Null if there isn't. */
+    /* Data for BSD scheduler */
+    fixed_point recent_cpu;             /* Recent cpu usage of thread */
+    int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -138,10 +142,27 @@ void thread_set_priority (int);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
+void get_donated_priority(struct thread *t, int donated_pri);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 /*
-* Returns true if a is less than b.
+* Returns true if a is greater than b.
 */
-bool priority_less_func (const struct list_elem *a,const struct list_elem *b, void * aux);
+bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux);
+/*
+  calculate the priority according to recent_cpu and nice values and return the value clamped to a suitable range.
+*/
+int calculate_priority(struct thread * t);
+/*
+  Calculates recent cpu and returns the calculated value.
+*/
+fixed_point calculate_recent_cpu(struct thread * t);
+/*
+  Calculates the load average and returns the calculated value.
+*/
+fixed_point calculate_load_avg(void);
+/* Swaps to the highest priority in the already sorted ready queue. 
+  Should never be called from an interrupt context.
+*/
+void thread_swap_to_highest_pri(void);
 #endif /* threads/thread.h */

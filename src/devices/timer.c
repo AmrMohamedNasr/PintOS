@@ -95,12 +95,16 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
 
   enum intr_level old_level = intr_disable ();
+
+  if (ticks > 0) {
   
-  thread_current ()-> ticks_remaining = ticks;
+	  thread_current ()-> ticks_remaining = ticks;
 
-  list_push_front (&busy_waiters, &thread_current ()->elem);
+	  list_push_front (&busy_waiters, &thread_current ()->elem);
 
-  thread_block ();
+	  thread_block ();
+
+  }
 
   intr_set_level (old_level);
 }

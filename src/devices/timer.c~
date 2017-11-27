@@ -38,6 +38,7 @@ timer_init (void)
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
   list_init (&busy_waiters);
+  ticks = 0;
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -93,13 +94,19 @@ timer_sleep (int64_t ticks)
 
   ASSERT (intr_get_level () == INTR_ON);
 
-  thread_current ()-> ticks_remaining = ticks;
+  enum intr_level old_level = intr_disable ();
 
-  list_push_front (&busy_waiters, &thread_current ()->elem);
+  if (ticks > 0) {
+  
+	  thread_current ()-> ticks_remaining = ticks;
 
-  intr_disable ();
+	  list_push_front (&busy_waiters, &thread_current ()->elem);
 
-  thread_block ();
+	  thread_block ();
+
+  }
+
+  intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -178,31 +185,16 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   struct list_elem *e;
-
-  for (e = list_rbegin (&busy_waiters); !list_empty (&busy_waiters) && e != list_rend (&busy_waiters)&& !check_null(e) ; e = list_prev (e)){
-
-        list_entry(e, struct thread, elem)-> ticks_remaining--;
-
-        if(list_entry(e, struct thread, elem)-> ticks_remaining == 0 && !check_null(e)){
-
-		thread_unblock (list_entry(e, struct thread, elem));
-if(e == list_rend (&busy_waiters)){
-printf("hiiiiiiiiii");
-}
-if(e == list_rbegin (&busy_waiters)){
-printf("ayaaaa");
-}
-		e = list_remove (e);
-if(e == list_rbegin (&busy_waiters)){
-printf("alyy");
-}
-if(e == list_rend (&busy_waiters)){
-printf("hiiiiiiiiii");
-}
-
-        }
+  struct thread * t;
+  for (e = list_rbegin (&busy_waiters); !list_empty (&busy_waiters) && e != list_rend (&busy_waiters); e = list_prev (e)) {
+    t = list_entry(e, struct thread, elem);
+    t-> ticks_remaining--;
+    if(t-> ticks_remaining <= 0){
+      e = list_remove(e);
+      thread_unblock (t);
+    }
   }
-  thread_tick ();
+ thread_tick ();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
