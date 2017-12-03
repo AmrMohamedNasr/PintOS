@@ -2,3 +2,4 @@ src/threads/build/*
 src/utils/*
 src/examples/*
 src/boch*
+src/threads/Make.vars
