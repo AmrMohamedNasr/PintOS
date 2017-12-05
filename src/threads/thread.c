@@ -61,7 +61,14 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 bool thread_mlfqs;
 /* The load average needed in the bsd scheduler */
 static fixed_point load_avg;
-
+/* The first constant coefficient in load average equation. */
+static fixed_point load_coeff_1 = fixed_point_div(
+            integer_to_fixed_point(59),
+            integer_to_fixed_point(60));
+/* The second constant coefficient in load average equation. */
+static fixed_point load_coeff_2 = fixed_point_div(
+            integer_to_fixed_point(1),
+            integer_to_fixed_point(60));
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -75,6 +82,29 @@ void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 static void update_priority(struct thread * t, void * aux);
 static void update_recent_cpu(struct thread * t, void * aux);
+static void list_reorder (struct list_elem *,
+                  list_less_func *, void *aux);
+
+static inline bool
+is_head (struct list_elem *elem)
+{
+  return elem != NULL && elem->prev == NULL && elem->next != NULL;
+}
+
+/* Returns true if ELEM is an interior element,
+   false otherwise. */
+static inline bool
+is_interior (struct list_elem *elem)
+{
+  return elem != NULL && elem->prev != NULL && elem->next != NULL;
+}
+
+/* Returns true if ELEM is a tail, false otherwise. */
+static inline bool
+is_tail (struct list_elem *elem)
+{
+  return elem != NULL && elem->prev != NULL && elem->next == NULL;
+}
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -403,7 +433,7 @@ void get_donated_priority(struct thread * t, int donated_pri) {
           {
   	    	struct lock *l = list_entry(e, struct lock, elem);
   	    	if (!list_empty(&l->semaphore.waiters)) {
-  	    		struct thread * lt = list_entry(list_max(&l->semaphore.waiters, &priority_greater_func, NULL), struct thread, elem);
+  	    		struct thread * lt = list_entry(list_min(&l->semaphore.waiters, &priority_greater_func, NULL), struct thread, elem);
   	    		if (lt->priority > t->priority) {
   	    			t->priority = lt->priority;
   	    		}
@@ -412,9 +442,13 @@ void get_donated_priority(struct thread * t, int donated_pri) {
   	}
     struct lock * l = t->blocked_on_lock;
     struct thread * lt = t;
+    if (t != thread_current ()) {
+      list_reorder(&t->elem, &priority_greater_func, NULL);
+    }
     while (l != NULL) {
       if (l->holder->priority < lt->priority) {
         l->holder->priority = lt->priority;
+        list_reorder(&l->holder->elem, &priority_greater_func, NULL);
         lt = l->holder;
         l = lt->blocked_on_lock;
       } else {
@@ -424,6 +458,7 @@ void get_donated_priority(struct thread * t, int donated_pri) {
     intr_set_level(old_level);
   }
 }
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority)
@@ -594,14 +629,10 @@ fixed_point calculate_load_avg(void) {
     ready_size++;
   }
   return fixed_point_mul(
-          fixed_point_div(
-            integer_to_fixed_point(59),
-            integer_to_fixed_point(60)),
+          load_coeff_1,
           load_avg)
         +
-            (fixed_point_div(
-              integer_to_fixed_point(1),
-              integer_to_fixed_point(60))
+            (load_coeff_2
             * ready_size);
 }
 static void update_priority(struct thread * t, void * aux) {
@@ -655,6 +686,39 @@ alloc_frame (struct thread *t, size_t size)
   return t->stack;
 }
 
+/* Reorders ELEM in the proper position in its LIST, which must be
+   sorted according to LESS given auxiliary data AUX.
+   Runs in O(n) average case in the number of elements in LIST. */
+void
+list_reorder (struct list_elem *elem,
+                     list_less_func *less, void *aux)
+{
+  struct list_elem *e;
+  bool back_dir = true;
+  ASSERT (elem != NULL);
+  ASSERT (less != NULL);
+  ASSERT (is_interior(elem));
+  e = elem->prev;
+  if (is_head(e) || !less(elem, e, aux)) {
+    e = elem->next;
+    back_dir = false;
+    if (is_tail(e)) {
+      return;
+    }
+  }
+  list_remove(elem);
+  if (back_dir) {
+    while (less(elem, e, aux) && !is_head(e)) {
+      e = e->prev;
+    }
+    e = e->next;
+  } else {
+    while (less(e, elem, aux) && !is_tail(e)) {
+      e = e->next;
+    }
+  }
+  list_insert(e, elem);
+}
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
    empty.  (If the running thread can continue running, then it
