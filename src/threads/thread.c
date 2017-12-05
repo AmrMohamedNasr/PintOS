@@ -168,6 +168,7 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  thread_ticks++;
 
   if (thread_mlfqs) {
     int64_t ticks_timer = timer_ticks ();
@@ -182,6 +183,9 @@ thread_tick (void)
       thread_foreach(&update_priority, NULL);
       list_sort(&ready_list, &priority_greater_func, NULL);
     }
+    if (thread_ticks % TIME_SLICE == 0) {
+      intr_yield_on_return ();
+    }
   }
   if (!list_empty(&ready_list)) {
     struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
@@ -189,7 +193,6 @@ thread_tick (void)
       intr_yield_on_return ();
     }
   } 
-	thread_ticks++;
 }
 
 void thread_swap_to_highest_pri(void) {
@@ -433,7 +436,7 @@ void get_donated_priority(struct thread * t, int donated_pri) {
           {
   	    	struct lock *l = list_entry(e, struct lock, elem);
   	    	if (!list_empty(&l->semaphore.waiters)) {
-  	    		struct thread * lt = list_entry(list_min(&l->semaphore.waiters, &priority_greater_func, NULL), struct thread, elem);
+  	    		struct thread * lt = list_entry(list_front(&l->semaphore.waiters), struct thread, elem);
   	    		if (lt->priority > t->priority) {
   	    			t->priority = lt->priority;
   	    		}
@@ -667,7 +670,6 @@ init_thread (struct thread *t, const char *name, int priority)
     t->base_priority = priority;
     t->blocked_on_lock = NULL;
   }
-  t->ticks_remaining = 0;
   list_init(&t->locks);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);

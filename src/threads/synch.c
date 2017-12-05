@@ -70,14 +70,14 @@ sema_down (struct semaphore *sema)
 
   old_level = intr_disable ();
   while (sema->value == 0)
-    {
+  {
 		if (thread_mlfqs) {
 			list_push_back(&sema->waiters, &thread_current ()->elem);
 		} else {
-	      	list_insert_ordered(&sema->waiters, &thread_current ()->elem, &thread_greater_func, NULL);
-        }
-      thread_block ();
+    	list_insert_ordered(&sema->waiters, &thread_current ()->elem, &thread_greater_func, NULL);
     }
+    thread_block ();
+  }
   sema->value--;
   intr_set_level (old_level);
 }
@@ -127,8 +127,8 @@ sema_up (struct semaphore *sema)
 		} else {
 			top_w_e = list_pop_front (&sema->waiters);
 		}
-      	thread_unblock (list_entry (top_w_e, struct thread, elem));
-   }
+  	thread_unblock (list_entry (top_w_e, struct thread, elem));
+  }
   sema->value++;
   intr_set_level (old_level);
   thread_swap_to_highest_pri ();
