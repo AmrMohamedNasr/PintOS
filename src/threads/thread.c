@@ -59,16 +59,19 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
-/* The load average needed in the bsd scheduler */
-static fixed_point load_avg;
-/* The first constant coefficient in load average equation. */
-static fixed_point load_coeff_1 = fixed_point_div(
-            integer_to_fixed_point(59),
-            integer_to_fixed_point(60));
-/* The second constant coefficient in load average equation. */
-static fixed_point load_coeff_2 = fixed_point_div(
-            integer_to_fixed_point(1),
-            integer_to_fixed_point(60));
+/** Properties for mlfqs **/
+  /* The minimum current thread */
+  static struct thread * thread_min_mlfqs;
+  /* The load average needed in the bsd scheduler */
+  static fixed_point load_avg;
+  /* The first constant coefficient in load average equation. */
+  static fixed_point load_coeff_1 = fixed_point_div(
+              integer_to_fixed_point(59),
+              integer_to_fixed_point(60));
+  /* The second constant coefficient in load average equation. */
+  static fixed_point load_coeff_2 = fixed_point_div(
+              integer_to_fixed_point(1),
+              integer_to_fixed_point(60));
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -127,6 +130,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   load_avg = 0;
+  thread_min_mlfqs = NULL;
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -181,14 +185,21 @@ thread_tick (void)
     }
     if (ticks_timer % 4 == 0) {
       thread_foreach(&update_priority, NULL);
-      list_sort(&ready_list, &priority_greater_func, NULL);
+      if (!list_empty(&ready_list)) {
+        thread_min_mlfqs = list_entry(list_min(&ready_list, &priority_greater_func, NULL), struct thread, elem);
+      }
     }
     if (thread_ticks % TIME_SLICE == 0) {
       intr_yield_on_return ();
     }
   }
   if (!list_empty(&ready_list)) {
-    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    struct thread * top_t;
+    if (thread_mlfqs) {
+      top_t = thread_min_mlfqs;
+    } else {
+      top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    }
     if (t->priority < top_t->priority) {
       intr_yield_on_return ();
     }
@@ -200,7 +211,12 @@ void thread_swap_to_highest_pri(void) {
   bool inter_off = true;
   old_level = intr_disable ();
   if (!list_empty(&ready_list)) {
-    struct thread * top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    struct thread * top_t;
+    if (thread_mlfqs) {
+      top_t = thread_min_mlfqs;
+    } else {
+      top_t = list_entry(list_front(&ready_list), struct thread, elem);
+    }
     if (thread_current ()->priority < top_t->priority) {
       inter_off = false;
       intr_set_level (old_level);
@@ -324,7 +340,14 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered(&ready_list, &t->elem, &priority_greater_func, NULL);
+  if (thread_mlfqs) {
+    list_push_back(&ready_list, &t->elem);
+    if (thread_min_mlfqs == NULL || priority_greater_func(&t->elem, &thread_min_mlfqs->elem, NULL)) {
+      thread_min_mlfqs = t;
+    }
+  } else {
+    list_insert_ordered(&ready_list, &t->elem, &priority_greater_func, NULL);
+  }
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -394,8 +417,16 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread)
-  	list_insert_ordered(&ready_list, &cur->elem, &priority_greater_func, NULL);
+  if (cur != idle_thread) {
+    if (thread_mlfqs) {
+      list_push_back(&ready_list, &cur->elem);
+      if (thread_min_mlfqs == NULL || priority_greater_func(&cur->elem, &thread_min_mlfqs->elem, NULL)) {
+        thread_min_mlfqs = cur;
+      }
+    } else { 
+  	 list_insert_ordered(&ready_list, &cur->elem, &priority_greater_func, NULL);
+    }
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -729,10 +760,22 @@ list_reorder (struct list_elem *elem,
 static struct thread *
 next_thread_to_run (void)
 {
-  if (list_empty (&ready_list))
+  if (list_empty (&ready_list)) {
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  } else {
+    if (thread_mlfqs) {
+      struct thread * top_waiter_thread = thread_min_mlfqs;
+      list_remove(&thread_min_mlfqs->elem);
+      if (list_empty(&ready_list)) {
+        thread_min_mlfqs = NULL;
+      } else {
+        thread_min_mlfqs = list_entry(list_min(&ready_list, &priority_greater_func, NULL), struct thread, elem);
+      }
+      return top_waiter_thread;
+    } else {
+      return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    }
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
