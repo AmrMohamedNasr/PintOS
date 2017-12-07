@@ -59,7 +59,7 @@ sema_init (struct semaphore *sema, unsigned value)
    This function may sleep, so it must not be called within an
    interrupt handler.  This function may be called with
    interrupts disabled, but if it sleeps then the next scheduled
-   thread will probably t   urn interrupts back on. */
+   thread will probably turn interrupts back on. */
 void
 sema_down (struct semaphore *sema)
 {
@@ -209,13 +209,17 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  enum intr_level old_level;
+  old_level = intr_disable ();
   thread_current()->blocked_on_lock = lock;
-  get_donated_priority(lock->holder , thread_current()->priority);
+  if (lock->holder != NULL && thread_current()->priority > lock->holder->priority) {
+    get_donated_priority(lock->holder , thread_current()->priority);
+  }
   sema_down (&lock->semaphore);
   list_push_front(&thread_current ()->locks , &lock->elem);
   thread_current ()->blocked_on_lock = NULL;
   lock->holder = thread_current ();
+  intr_set_level (old_level);
 }
 
 
