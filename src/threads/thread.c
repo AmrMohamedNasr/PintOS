@@ -454,6 +454,9 @@ thread_foreach (thread_action_func *func, void *aux)
 */
 void get_donated_priority(struct thread * t, int donated_pri) {
   if (!thread_mlfqs) {
+    if (t == NULL) {
+      return;
+    }
     enum intr_level old_level;
     old_level = intr_disable ();
   	t->priority = t->base_priority;

@@ -210,10 +210,8 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  if(lock->holder != NULL){
-      thread_current()->blocked_on_lock = lock;
-      get_donated_priority(lock->holder , thread_current()->priority);
-  }
+  thread_current()->blocked_on_lock = lock;
+  get_donated_priority(lock->holder , thread_current()->priority);
   sema_down (&lock->semaphore);
   list_push_front(&thread_current ()->locks , &lock->elem);
   thread_current ()->blocked_on_lock = NULL;
