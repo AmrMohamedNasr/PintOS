@@ -1,6 +1,6 @@
 									+----------------------------------+
 									|               CS 333             |     	               
-									|  PROJECT 1: THREADS 		   |
+									|  PROJECT 1: THREADS 		   	   |
 									|   DESIGN DOCUMENT                |
 									+----------------------------------+
 				   
@@ -10,7 +10,7 @@
 
 Amr Mohamed Nasr Eldine  		45
 Michael Raafat Mikhail			54
-Aya Abouzeid				2
+Aya Abouzeid					2
 
 			     ALARM CLOCK
 			     ===========
@@ -44,7 +44,7 @@ Whenever a timer interrupt happens, It loops over the list of timer elements, de
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
-The steps taken to minimize the amount of time spent in the timer interrupt handler is that our algorithm makes us need to only iterate over the threads waiting for the timer, which is the minimum time we can take since we will always need to update all threads waiting for the timer.
+The steps taken to minimize the amount of time spent in the timer interrupt handler is that our algorithm makes us need to only iterate over the threads waiting for the timer, which is the minimum time we can take since we will always need to update all threads waiting for the timer. Also any thread asking to sleep a zero or less number of ticks won't be even added to the waiting list.
 
 ---- SYNCHRONIZATION ----
 
