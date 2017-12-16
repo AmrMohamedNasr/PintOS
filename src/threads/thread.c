@@ -220,7 +220,11 @@ void thread_swap_to_highest_pri(void) {
     if (thread_current ()->priority < top_t->priority) {
       inter_off = false;
       intr_set_level (old_level);
-      thread_yield ();
+      if (intr_context()) {
+        intr_yield_on_return ();
+      } else {
+        thread_yield ();
+      }
     }
   }
   if (inter_off) {
