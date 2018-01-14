@@ -2,6 +2,7 @@
 #define __LIB_USER_SYSROUT_H
 
 #include <stdbool.h>
+#include "lib/user/syscall.h"
 
 /*
 Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h).
@@ -63,7 +64,7 @@ and then implement the wait system call in terms of process_wait().
 
 Implementing this system call requires considerably more work than any of the rest.
 */
-int wait_routine (pid_t);
+int wait_routine (pid_t id);
 /*
 Creates a new file called file initially initial_size bytes in size.
 Returns true if successful, false otherwise. 

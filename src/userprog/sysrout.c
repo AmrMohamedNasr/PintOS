@@ -13,7 +13,7 @@ pid_t exec_routine (const char *file) {
 	// Please implement me.
 }
 
-int wait_routine (pid_t) {
+int wait_routine (pid_t id) {
 	// Please implement me.
 }
 
