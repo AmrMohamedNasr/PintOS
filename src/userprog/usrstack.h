@@ -10,8 +10,8 @@ char pop_char (void ** esp);
 void push_word_align (void ** esp);
 
 void push_void_pointer (void ** esp, void *pointer);
-char * pop_void_pointer (void ** esp);
+void * pop_void_pointer (void ** esp);
 
 void push_char_pointer_pointer (void ** esp, char ** pointer);
-void push_ret_address (void ** esp, void (*) ());
+
 #endif
