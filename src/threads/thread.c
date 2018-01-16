@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -275,7 +276,6 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
-
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack'
      member cannot be observed. */
@@ -304,6 +304,11 @@ thread_create (const char *name, int priority,
       t->priority = calculate_priority(t);
     }
   }
+  struct child_info *chld_info = malloc(sizeof(struct child_info));
+  chld_info->tid = tid;
+  sema_init(&chld_info->finished_flag, 0);
+  t->my_info = chld_info;
+  list_push_back(&thread_current ()->children, &chld_info->parent_elem);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -633,7 +638,7 @@ is_thread (struct thread *t)
 * Returns true if a is greater than b.
 * The comparison function to be given to the list.
 */
-bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
+bool priority_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux UNUSED) {
   struct thread * t1 = list_entry (a, struct thread, elem);
   struct thread * t2 = list_entry (b, struct thread, elem);
   return t1->priority > t2->priority;
@@ -676,12 +681,12 @@ fixed_point calculate_load_avg(void) {
             (load_coeff_2
             * ready_size);
 }
-static void update_priority(struct thread * t, void * aux) {
+static void update_priority(struct thread * t, void * aux UNUSED) {
   if (t != idle_thread) {
     t->priority = calculate_priority(t);
   }
 }
-static void update_recent_cpu(struct thread * t, void * aux) {
+static void update_recent_cpu(struct thread * t, void * aux UNUSED) {
   if (t != idle_thread) {
     t->recent_cpu = calculate_recent_cpu(t);
   }
@@ -708,7 +713,8 @@ init_thread (struct thread *t, const char *name, int priority)
     t->base_priority = priority;
     t->blocked_on_lock = NULL;
   }
-  list_init(&t->locks);
+  list_init (&t->locks);
+  list_init (&t->children);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }
@@ -731,7 +737,7 @@ alloc_frame (struct thread *t, size_t size)
    Runs in O(n) average case in the number of elements in LIST. */
 void
 list_reorder (struct list_elem *elem,
-                     list_less_func *less, void *aux)
+                     list_less_func *less, void *aux UNUSED)
 {
   struct list_elem *e;
   bool back_dir = true;
@@ -758,6 +764,20 @@ list_reorder (struct list_elem *elem,
     }
   }
   list_insert(e, elem);
+}
+
+struct thread *get_thread_from_tid (tid_t tid) {
+    struct list_elem *e;
+    struct thread *t;
+    for (e = list_begin (&all_list); e != list_end (&all_list);
+         e = list_next (e))
+      {
+        t = list_entry (e, struct thread, allelem);
+        if (t->tid == tid) {
+          return t;
+        }
+      }
+      return NULL;
 }
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is

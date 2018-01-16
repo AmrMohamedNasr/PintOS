@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -63,6 +64,10 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+
+  /* Set stack */
+
+
   success = load (file_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
@@ -92,8 +97,21 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  for(;;);
-  return -1;
+  struct thread *t = thread_current ();
+  struct list_elem *e;
+  struct child_info *ci;
+  int ret = -1;
+  for (e = list_begin (&t->children); e != list_end (&t->children);
+       e = list_next (e)) {
+    ci = list_entry (e, struct child_info, parent_elem);
+    if (ci->tid == child_tid) {
+      sema_down (&ci->finished_flag);
+      list_remove (&ci->parent_elem);
+      ret = ci->ret_status;
+      free(ci);
+    }
+  }
+  return ret;
 }
 
 /* Free the current process's resources. */
@@ -103,6 +121,7 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  sema_up (&cur->my_info->finished_flag);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -442,7 +461,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }

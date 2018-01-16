@@ -5,6 +5,7 @@
 #include <list.h>
 #include <FixedPoint.h>
 #include <stdint.h>
+#include <threads/synch.h>
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -81,6 +82,14 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
+struct child_info
+  {
+    tid_t tid;                          /* Thread identifier. */
+    struct list_elem parent_elem;       /* List elements in the parent */
+    int ret_status;                     /* The return status of the thread */
+    struct semaphore finished_flag;     /* Semaphore to indicate if the process is terminated */
+  };
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -98,7 +107,9 @@ struct thread
     int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    /* The data to organize process termination */
+    struct list children;               /* List of children */
+    struct child_info* my_info;          /* This process info to its parent */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -164,4 +175,7 @@ fixed_point calculate_load_avg(void);
   Should never be called from an interrupt context.
 */
 void thread_swap_to_highest_pri(void);
+/* Get a pointer to the thread by its tid.
+*/
+struct thread *get_thread_from_tid (tid_t);
 #endif /* threads/thread.h */
