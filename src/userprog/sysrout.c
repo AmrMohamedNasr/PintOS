@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include "userprog/sysrout.h"
-
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "filesys/off_t.h"
 void halt_routine (void) {
 	// Please implement me.
 }
@@ -18,11 +20,11 @@ int wait_routine (pid_t id) {
 }
 
 bool create_routine (const char *file, unsigned initial_size) {
-	// Please implement me.
+	return filesys_create(file, initial_size);
 }
 
 bool remove_routine (const char *file) {
-	// Please implement me.
+	return filesys_remove(file);
 }
 
 int open_routine (const char *file) {
@@ -42,11 +44,14 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 }
 
 void seek_routine (int fd, unsigned position) {
-	// Please implement me.
+	if (position == 0) {
+		// TODO
+	}
+	file_seek ( (struct file *) fd , (off_t) position);
 }
 
 unsigned tell_routine (int fd) {
-	// Please implement me.
+	return (unsigned) file_tell ((struct file *) fd );
 }
 
 void close_routine (int fd) {
