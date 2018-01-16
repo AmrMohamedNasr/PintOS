@@ -82,13 +82,6 @@ typedef int tid_t;
    only because they are mutually exclusive: only a thread in the
    ready state is on the run queue, whereas only a thread in the
    blocked state is on a semaphore wait list. */
-struct child_info
-  {
-    tid_t tid;                          /* Thread identifier. */
-    struct list_elem parent_elem;       /* List elements in the parent */
-    int ret_status;                     /* The return status of the thread */
-    struct semaphore finished_flag;     /* Semaphore to indicate if the process is terminated */
-  };
 
 struct thread
   {
@@ -107,12 +100,15 @@ struct thread
     int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    /* The data to organize process termination */
-    struct list children;               /* List of children */
-    struct child_info* my_info;          /* This process info to its parent */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    /* The data to organize process termination */
+    struct list children;               /* List of children */
+    struct list_elem parent_elem;       /* List elements to be added to parent children */
+    struct semaphore finished_flag;     /* Semaphore to indicate if the process is terminated */
+    struct semaphore allowed_finish;    /* Semaphore to indicate if the process is allowed to be terminated */
+    int ret_status;                     /* The return status of the thread */
 #endif
 
     /* Owned by thread.c. */
