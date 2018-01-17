@@ -21,16 +21,13 @@ syscall_handler (struct intr_frame *f)
   uint32_t sys_id = *(sp);
   uint32_t arg1, arg2, arg3;
   if (sys_id != SYS_HALT) {
-  	if (sys_id == SYS_CREATE || sys_id == SYS_SEEK) {
-  		arg1 = *(sp + 4);
-  		arg2 = *(sp + 5);
-  	} else if (sys_id == SYS_READ || sys_id == SYS_WRITE) {
-		arg1 = *(sp + 5);
-		arg2 = *(sp + 6);
-		arg3 = *(sp + 7);
-	} else {
-		arg1 = *(sp + 1);
-	}
+  	arg1 = *(sp + 1);
+  	if (sys_id == SYS_CREATE || sys_id == SYS_SEEK || sys_id == SYS_READ || sys_id == SYS_WRITE) {
+  		arg2 = *(sp + 2);
+  		if (sys_id == SYS_READ || sys_id == SYS_WRITE) {
+  			arg3 = *(sp + 3);
+  		}
+  	}
   }
   bool no_ret = false;
   int32_t ret;

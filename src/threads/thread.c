@@ -304,8 +304,9 @@ thread_create (const char *name, int priority,
       t->priority = calculate_priority(t);
     }
   }
+  #ifdef USERPROG
   list_push_back(&thread_current ()->children, &t->parent_elem);
-
+  #endif
   /* Add to run queue. */
   thread_unblock (t);
   thread_swap_to_highest_pri();
@@ -710,11 +711,13 @@ init_thread (struct thread *t, const char *name, int priority)
     t->blocked_on_lock = NULL;
   }
   list_init (&t->locks);
-  list_init (&t->children);
-  sema_init (&t->finished_flag, 0);
-  sema_init (&t->allowed_finish, 0);
+  #ifdef USERPROG
+    list_init (&t->children);
+    sema_init (&t->finished_flag, 0);
+    sema_init (&t->allowed_finish, 0);
+    t->ret_status = -1;
+  #endif
   t->magic = THREAD_MAGIC;
-  t->ret_status = -1;
   list_push_back (&all_list, &t->allelem);
 }
 
