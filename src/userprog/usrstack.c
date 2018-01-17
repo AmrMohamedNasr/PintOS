@@ -1,13 +1,14 @@
 #include "userprog/usrstack.h"
+#include <string.h>
 
-void push_int (void ** esp, int value) {
-	*esp -= sizeof(int);
+void push_int32_t (void ** esp, int32_t value) {
+	*esp -= sizeof(int32_t);
 	*((int *)*esp) = value;
 }
 
-int pop_int (void ** esp) {
-	int value = *((int *)*esp);
-	*esp += sizeof(int);
+int32_t pop_int32_t (void ** esp) {
+	int32_t value = *((int32_t *)*esp);
+	*esp += sizeof(int32_t);
 	return value;
 }
 
@@ -20,6 +21,12 @@ char pop_char (void ** esp) {
 	char c = *((char *)*esp);
 	*esp += sizeof(char);
 	return c;
+}
+
+void push_str (void ** esp, const char *s) {
+	size_t len = strlen(s) + 1;
+	*esp -= (len * sizeof(char));
+	memcpy(*esp, s, len);
 }
 
 void push_word_align (void ** esp) {

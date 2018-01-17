@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/usrstack.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -64,12 +65,39 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-
+  int arg_length = strlen(file_name) + 1;
+  char s [arg_length];
+  strlcpy(s, file_name, arg_length);
+  char *token, *save_ptr;
+  int argc = 0;
+  for (token = strtok_r (s, " ", &save_ptr); token != NULL;
+      token = strtok_r (NULL, " ", &save_ptr)) {
+    if (argc == 0) {
+      success = load (token, &if_.eip, &if_.esp);
+    }
+    argc++;
+  }
   /* Set stack */
-
-
-  success = load (file_name, &if_.eip, &if_.esp);
-
+  if (success) {
+    char * argv[argc];
+    strlcpy(s, file_name, arg_length);
+    int i = 0;
+    for (token = strtok_r (s, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr)) {
+      push_str(&if_.esp, token);
+      argv[i] = if_.esp;
+      i++;
+    }
+    push_word_align (&if_.esp);
+    push_void_pointer(&if_.esp, 0);
+    while (i >= 0) {
+      push_void_pointer(&if_.esp, argv[i]);
+      i--;
+    }
+    push_char_pointer_pointer(&if_.esp, if_.esp);
+    push_int32_t(&if_.esp, argc);
+    push_void_pointer(&if_.esp, 0);
+  }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
