@@ -22,10 +22,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-
-static inline bool isSpace(const char c) {
-    return (c == '\n' || c == ' ' || c == '\t' || c == '\r' || c == '\f' || c == '\v') ? true : false;
-}
+static const char * DELIMITER = " \n\t\r\f\b\v";
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -43,9 +40,13 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  
+  int arg_length = strlen(file_name) + 1;
+  char s [arg_length];
+  strlcpy(s, file_name, arg_length);
+  char *token, *save_ptr;
+  token = strtok_r (s, DELIMITER, &save_ptr);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -70,8 +71,8 @@ start_process (void *file_name_)
   strlcpy(s, file_name, arg_length);
   char *token, *save_ptr;
   int argc = 0;
-  for (token = strtok_r (s, " ", &save_ptr); token != NULL;
-      token = strtok_r (NULL, " ", &save_ptr)) {
+  for (token = strtok_r (s, DELIMITER, &save_ptr); token != NULL;
+      token = strtok_r (NULL, DELIMITER, &save_ptr)) {
     if (argc == 0) {
       success = load (token, &if_.eip, &if_.esp);
     }
@@ -82,17 +83,17 @@ start_process (void *file_name_)
     char * argv[argc];
     strlcpy(s, file_name, arg_length);
     int i = 0;
-    for (token = strtok_r (s, " ", &save_ptr); token != NULL;
-        token = strtok_r (NULL, " ", &save_ptr)) {
+    for (token = strtok_r (s, DELIMITER, &save_ptr); token != NULL;
+        token = strtok_r (NULL, DELIMITER, &save_ptr)) {
       push_str(&if_.esp, token);
       argv[i] = if_.esp;
       i++;
     }
     push_word_align (&if_.esp);
     push_void_pointer(&if_.esp, 0);
-    while (i >= 0) {
-      push_void_pointer(&if_.esp, argv[i]);
+    while (i > 0) {
       i--;
+      push_void_pointer(&if_.esp, argv[i]);
     }
     push_char_pointer_pointer(&if_.esp, if_.esp);
     push_int32_t(&if_.esp, argc);
@@ -155,6 +156,7 @@ process_exit (void)
     c = list_entry (e, struct thread, parent_elem);
     process_wait(c->tid);
   }
+  printf ("%s: exit(%d)\n", cur->name, cur->ret_status);
   sema_up (&cur->finished_flag);
   sema_down (&cur->allowed_finish);
   /* Destroy the current process's page directory and switch back

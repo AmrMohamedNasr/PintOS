@@ -7,32 +7,34 @@
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "userprog/process.h"
+#include <stdio.h>
 
 static struct lock file_lock;  ////mfrod n3ml init lel lock bs lsa msh 3rfa feen
 
 void halt_routine (void) {
-    printf("executing halt");
+    printf("executing halt\n");
 	shutdown_power_off();
 }
 
 void exit_routine (int status) {
-    printf("executing exit");
+    //printf("executing exit\n");
+    thread_current ()->ret_status = status;
     thread_exit();
 }
 
 pid_t exec_routine (const char *file) {
-    printf("executing exec");
+    printf("executing exec\n");
      return process_execute(file);
 }
 
 int wait_routine (pid_t id) {
-    printf("executing wait");
+    printf("executing wait\n");
 
 	// Please implement me.
 }
 
 bool create_routine (const char *file, unsigned initial_size) {
-    printf("executing create");
+    printf("executing create\n");
 
     lock_acquire(&file_lock);
     bool create = filesys_create(file, initial_size);
@@ -41,7 +43,7 @@ bool create_routine (const char *file, unsigned initial_size) {
 }
 
 bool remove_routine (const char *file) {
-    printf("executing remove");
+    printf("executing remove\n");
 
     lock_acquire(&file_lock);
 	bool remove = filesys_remove(file);
@@ -50,13 +52,13 @@ bool remove_routine (const char *file) {
 }
 
 int open_routine (const char *file) {
-    printf("executing open");
+    printf("executing open\n");
 
 	// Please implement me.
 }
 
 int filesize_routine (int fd) {
-    printf("executing filesize");
+    printf("executing filesize\n");
 
     lock_acquire(&file_lock);
 
@@ -65,22 +67,21 @@ int filesize_routine (int fd) {
 }
 
 int read_routine (int fd, void *buffer, unsigned length) {
-    printf("executing read");
+    printf("executing read\n");
 
 	// Please implement me.
 }
 
 int write_routine (int fd, const void *buffer, unsigned length) {
-    printf("executing write");
-
-	if (fd == 1){
-        //printf(buffer);
+    //printf("executing write\n");
+	if (fd == STDOUT_FILENO){
+        putbuf (buffer, length);
 	}
-
+	return length;
 }
 
 void seek_routine (int fd, unsigned position) {
-    printf("executing seek");
+    printf("executing seek\n");
 
 	if (position == 0) {
 		// TODO
@@ -89,13 +90,13 @@ void seek_routine (int fd, unsigned position) {
 }
 
 unsigned tell_routine (int fd) {
-    printf("executing tell");
+    printf("executing tell\n");
 
 	return (unsigned) file_tell ((struct file *) fd );
 }
 
 void close_routine (int fd) {
-    printf("executing close");
+    printf("executing close\n");
 
 	// Please implement me.
 }

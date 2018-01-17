@@ -714,6 +714,7 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init (&t->finished_flag, 0);
   sema_init (&t->allowed_finish, 0);
   t->magic = THREAD_MAGIC;
+  t->ret_status = -1;
   list_push_back (&all_list, &t->allelem);
 }
 

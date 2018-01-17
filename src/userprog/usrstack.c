@@ -30,7 +30,11 @@ void push_str (void ** esp, const char *s) {
 }
 
 void push_word_align (void ** esp) {
-	*esp -= (((int)*esp) % 4);
+	int offset = (((int)*esp) % 4);
+	if (offset < 0) {
+		offset *= -1;
+	}
+	*esp -= offset;
 }
 
 void push_void_pointer (void ** esp, void *pointer) {
