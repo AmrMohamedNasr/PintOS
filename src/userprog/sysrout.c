@@ -12,25 +12,20 @@
 static struct lock file_lock;  ////mfrod n3ml init lel lock bs lsa msh 3rfa feen
 
 void halt_routine (void) {
-    printf("executing halt\n");
-	shutdown_power_off();
+    shutdown_power_off();
 }
 
 void exit_routine (int status) {
-    //printf("executing exit\n");
     thread_current ()->ret_status = status;
     thread_exit();
 }
 
 pid_t exec_routine (const char *file) {
-    printf("executing exec\n");
-     return process_execute(file);
+    return process_execute(file);
 }
 
 int wait_routine (pid_t id) {
-    printf("executing wait\n");
-
-	// Please implement me.
+    return process_wait(id);
 }
 
 bool create_routine (const char *file, unsigned initial_size) {
