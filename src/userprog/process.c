@@ -99,16 +99,16 @@ process_wait (tid_t child_tid UNUSED)
 {
   struct thread *t = thread_current ();
   struct list_elem *e;
-  struct child_info *ci;
+  struct thread *c;
   int ret = -1;
   for (e = list_begin (&t->children); e != list_end (&t->children);
        e = list_next (e)) {
-    ci = list_entry (e, struct child_info, parent_elem);
-    if (ci->tid == child_tid) {
-      sema_down (&ci->finished_flag);
-      list_remove (&ci->parent_elem);
-      ret = ci->ret_status;
-      free(ci);
+    c = list_entry (e, struct thread, parent_elem);
+    if (c->tid == child_tid) {
+      sema_down (&c->finished_flag);
+      list_remove (&c->parent_elem);
+      ret = c->ret_status;
+      sema_up (&c->allowed_finish);
     }
   }
   return ret;
@@ -120,8 +120,15 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
-  sema_up (&cur->my_info->finished_flag);
+  struct list_elem *e;
+  struct thread *c;
+  for (e = list_begin (&cur->children); e != list_end (&cur->children);
+       e = list_next (e)) {
+    c = list_entry (e, struct thread, parent_elem);
+    process_wait(c->tid);
+  }
+  sema_up (&cur->finished_flag);
+  sema_down (&cur->allowed_finish);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -461,7 +468,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE - 12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }

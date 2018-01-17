@@ -304,11 +304,7 @@ thread_create (const char *name, int priority,
       t->priority = calculate_priority(t);
     }
   }
-  struct child_info *chld_info = malloc(sizeof(struct child_info));
-  chld_info->tid = tid;
-  sema_init(&chld_info->finished_flag, 0);
-  t->my_info = chld_info;
-  list_push_back(&thread_current ()->children, &chld_info->parent_elem);
+  list_push_back(&thread_current ()->children, &t->parent_elem);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -715,6 +711,8 @@ init_thread (struct thread *t, const char *name, int priority)
   }
   list_init (&t->locks);
   list_init (&t->children);
+  sema_init (&t->finished_flag, 0);
+  sema_init (&t->allowed_finish, 0);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

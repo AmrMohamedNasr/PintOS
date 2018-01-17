@@ -363,13 +363,13 @@ cond_broadcast (struct condition *cond, struct lock *lock)
     cond_signal (cond, lock);
 }
 
-static bool thread_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux) {
+static bool thread_greater_func (const struct list_elem *a,const struct list_elem *b, void * aux UNUSED) {
   struct thread * t1 = list_entry (a, struct thread, elem);
   struct thread * t2 = list_entry (b, struct thread, elem);
   return t1->priority > t2->priority;
 }
 
-static bool sema_greater_func (const struct list_elem *a, const struct list_elem *b, void * aux) {
+static bool sema_greater_func (const struct list_elem *a, const struct list_elem *b, void * aux UNUSED) {
   struct semaphore_elem * s1 = list_entry (a, struct semaphore_elem, elem);
   struct semaphore_elem * s2 = list_entry (b, struct semaphore_elem, elem);
   return thread_greater_func(list_front(&s1->semaphore.waiters), list_front(&s2->semaphore.waiters), aux);
