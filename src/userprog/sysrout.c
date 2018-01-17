@@ -69,9 +69,11 @@ int read_routine (int fd, void *buffer, unsigned length) {
 
 int write_routine (int fd, const void *buffer, unsigned length) {
     //printf("executing write\n");
+	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);
 	}
+	lock_acquire(&file_lock);
 	return length;
 }
 

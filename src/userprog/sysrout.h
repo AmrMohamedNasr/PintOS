@@ -3,7 +3,11 @@
 
 #include <stdbool.h>
 #include "lib/user/syscall.h"
-
+struct file_elem
+{
+	int fd;
+	struct file * file;
+};
 /*
 Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h).
 This should be seldom used, because you lose some information about possible
