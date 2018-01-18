@@ -52,8 +52,10 @@ int open_routine (const char *file) {
     struct thread *t = thread_current ();
     struct file_elem *e;
     struct file *f = filesys_open(file);
-    if (f == NULL)
+    if (f == NULL) {
+        lock_release(&file_lock);
         return -1;
+    }
     e.file = f;
     e.fd = t->fd;
     t->fd = t->fd + 1;
@@ -64,11 +66,20 @@ int open_routine (const char *file) {
 
 int filesize_routine (int fd) {
     printf("executing filesize\n");
-
     lock_acquire(&file_lock);
-
+    struct thread *t = thread_current ();
+    struct file_elem * f;
+    struct list_elem *e;
+    for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        f = list_entry(e, struct file_elem, elem);
+        if(f->fd == fd){
+          int length = file_length(f->file);
+          lock_release(&file_lock);
+          return length;
+        }
+    }
     lock_release(&file_lock);
-
+    return -1;
 }
 
 int read_routine (int fd, void *buffer, unsigned length) {
