@@ -186,7 +186,6 @@ void seek_routine (int fd, unsigned position) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
          	file_seek(f->file , position);
-          	lock_release(&file_lock);
         }
     }
 	lock_release(&file_lock);
