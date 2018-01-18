@@ -101,8 +101,6 @@ struct thread
     int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list file_elems;             /* List of files opened by a thread */
-    int fd;                             /* File Descriptors for a thread. */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -112,6 +110,8 @@ struct thread
     struct semaphore finished_flag;     /* Semaphore to indicate if the process is terminated */
     struct semaphore allowed_finish;    /* Semaphore to indicate if the process is allowed to be terminated */
     int ret_status;                     /* The return status of the thread */
+    struct list file_elems;             /* List of files opened by a thread */
+    int fd;                             /* File Descriptors for a thread. */
 #endif
 
     /* Owned by thread.c. */

@@ -7,10 +7,15 @@
 #include "devices/input.h"
 #include "threads/thread.h"
 #include "threads/synch.h"
+#include "threads/malloc.h"
 #include "userprog/process.h"
 #include <stdio.h>
 
 static struct lock file_lock;  /* Synchronizes file system access. */
+
+void init_routine (void) {
+	lock_init (&file_lock);
+}
 
 void halt_routine (void) {
     shutdown_power_off();
@@ -52,18 +57,18 @@ int open_routine (const char *file) {
     printf("executing open\n");
     lock_acquire(&file_lock);
     struct thread *t = thread_current ();
-    struct file_elem *e;
+    struct file_elem *e = malloc(sizeof(struct file_elem));
     struct file *f = filesys_open(file);
     if (f == NULL) {
         lock_release(&file_lock);
         return -1;
     }
-    e.file = f;
-    e.fd = t->fd;
+    e->file = f;
+    e->fd = t->fd;
     t->fd = t->fd + 1;
-    list_push_front (&t->file_elems, &e.elem);
+    list_push_front (&t->file_elems, &e->elem);
     lock_release(&file_lock);
-    return f.fd;
+    return e->fd;
 }
 
 int filesize_routine (int fd) {
@@ -111,8 +116,9 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);
+        lock_release(&file_lock);
         return length;
-	} else {1
+	} else {
 		struct thread *t = thread_current ();
 		struct file_elem * f;
 		struct list_elem * e;
@@ -138,9 +144,8 @@ void seek_routine (int fd, unsigned position) {
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
-         	int offset = file_seek(f->file , position);
+         	file_seek(f->file , position);
           	lock_release(&file_lock);
-         	return offset;
         }
     }
 	lock_release(&file_lock);
@@ -162,7 +167,7 @@ unsigned tell_routine (int fd) {
     }
     lock_release(&file_lock);
 	return 0;
-
+}
 void close_routine (int fd) {
     lock_acquire(&file_lock);
     printf("executing close\n");
@@ -174,6 +179,7 @@ void close_routine (int fd) {
         if(f->fd == fd){
          	file_close(f->file);
          	list_remove(&(f->elem));
+         	free(f);
           	lock_release(&file_lock);
          	return;
         }

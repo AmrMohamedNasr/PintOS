@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include "lib/user/syscall.h"
+#include <list.h>
+
 struct file_elem
 {
 
@@ -10,6 +12,8 @@ struct file_elem
 	struct file * file;         /* File opened by a thread. */
 	struct list_elem elem;      /* List element. */
 };
+/* initalizes system routines */
+void init_routine (void);
 /*
 Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h).
 This should be seldom used, because you lose some information about possible

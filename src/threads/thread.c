@@ -137,7 +137,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-  fd = 2;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -717,6 +716,7 @@ init_thread (struct thread *t, const char *name, int priority)
     sema_init (&t->finished_flag, 0);
     sema_init (&t->allowed_finish, 0);
     t->ret_status = -1;
+    t->fd = 2;
   #endif
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
