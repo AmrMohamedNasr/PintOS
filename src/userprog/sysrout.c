@@ -100,16 +100,30 @@ int filesize_routine (int fd) {
 }
 
 int read_routine (int fd, void *buffer, unsigned length) {
+    if (fd == STDOUT_FILENO) {
+    	return -1;
+    }
+    char * temp_buffer = malloc(length + 1);
     lock_acquire(&file_lock);
 	if (fd == STDIN_FILENO){
 		// Don't forget to fix.
-        buffer = input_getc();
+        unsigned i = 0;
+        while (i < length) {
+        	temp_buffer[i] = input_getc();
+        	if(!write_user(buffer +i, 1, temp_buffer + i)) {
+        		lock_release(&file_lock);
+				free(temp_buffer);
+				exit_routine(-1);
+        	}
+        	i++;
+    	}
+	    lock_release(&file_lock);
+		free(temp_buffer);
         return length;
 	}
     struct thread *t = thread_current ();
     struct file_elem * f;
     struct list_elem * e;
-    char * temp_buffer = malloc(length + 1);
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
@@ -129,6 +143,9 @@ int read_routine (int fd, void *buffer, unsigned length) {
 }
 
 int write_routine (int fd, const void *buffer, unsigned length) {
+	if (fd == STDIN_FILENO) {
+		return 0;
+	}
 	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);

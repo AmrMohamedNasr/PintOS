@@ -91,8 +91,11 @@ start_process (void *file_name_)
     stack_len += 1 + strlen(token);
   }
   stack_len += 4 * (argc + 4); // argc, return address, additional argument, pointer argv.
+  if (stack_len > PAGE_SIZE) {
+    success = false;
+  }
   /* Set stack */
-  if (success || stack_len <= PAGE_SIZE) {
+  if (success) {
     char * argv[argc];
     strlcpy(s, file_name, arg_length);
     int i = 0;
@@ -112,7 +115,7 @@ start_process (void *file_name_)
     push_int32_t(&if_.esp, argc);
     push_void_pointer(&if_.esp, 0);
     t->ret_status = 0;
-  }
+  } 
   sema_up(&t->finished_flag);
   sema_down(&t->allowed_finish);
   /* If load failed, quit. */
@@ -172,9 +175,10 @@ process_exit (void)
     c = list_entry (e, struct thread, parent_elem);
     process_wait(c->tid);
   }
-  struct file * file = filesys_open (cur->name);
-  file_allow_write(file);
-  file_close (file);
+  if (cur->prg_file != NULL) {
+    file_allow_write(cur->prg_file);
+    file_close (cur->prg_file);
+  }
   printf ("%s: exit(%d)\n", cur->name, cur->ret_status);
   sema_up (&cur->finished_flag);
   sema_down (&cur->allowed_finish);
@@ -303,6 +307,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   file = filesys_open (file_name);
+  t->prg_file = file;
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
@@ -393,7 +398,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   return success;
 }
 

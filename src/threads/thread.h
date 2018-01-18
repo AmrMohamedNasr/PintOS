@@ -112,6 +112,7 @@ struct thread
     int ret_status;                     /* The return status of the thread */
     struct list file_elems;             /* List of files opened by a thread */
     int fd;                             /* File Descriptors for a thread. */
+    struct file *prg_file;              /* Program file */
 #endif
 
     /* Owned by thread.c. */
