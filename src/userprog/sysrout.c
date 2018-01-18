@@ -66,36 +66,35 @@ int open_routine (const char *file) {
 	if (!check_user_string(file)) {
 		exit_routine(-1);
 	}
-    lock_acquire(&file_lock);
     struct thread *t = thread_current ();
     struct file_elem *e = malloc(sizeof(struct file_elem));
+    lock_acquire(&file_lock);
     struct file *f = filesys_open(file);
+    lock_release(&file_lock);
     if (f == NULL) {
-        lock_release(&file_lock);
+        free(e);
         return -1;
     }
     e->file = f;
     e->fd = t->fd;
     t->fd = t->fd + 1;
     list_push_front (&t->file_elems, &e->elem);
-    lock_release(&file_lock);
     return e->fd;
 }
 
 int filesize_routine (int fd) {
-    lock_acquire(&file_lock);
     struct thread *t = thread_current ();
     struct file_elem * f;
     struct list_elem *e;
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
+    	  lock_acquire(&file_lock);
           int length = file_length(f->file);
           lock_release(&file_lock);
           return length;
         }
     }
-    lock_release(&file_lock);
     return -1;
 }
 
@@ -104,9 +103,8 @@ int read_routine (int fd, void *buffer, unsigned length) {
     	return -1;
     }
     char * temp_buffer = malloc(length + 1);
-    lock_acquire(&file_lock);
 	if (fd == STDIN_FILENO){
-		// Don't forget to fix.
+		lock_acquire(&file_lock);
         unsigned i = 0;
         while (i < length) {
         	temp_buffer[i] = input_getc();
@@ -127,6 +125,7 @@ int read_routine (int fd, void *buffer, unsigned length) {
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
+        	lock_acquire(&file_lock);
             int bytes = file_read(f->file, temp_buffer, length);
             lock_release(&file_lock);
             if (!write_user(buffer, length, temp_buffer)) {
@@ -137,7 +136,6 @@ int read_routine (int fd, void *buffer, unsigned length) {
             return bytes;
         }
     }
-	lock_release(&file_lock);
 	free(temp_buffer);
 	return -1;
 }
@@ -146,8 +144,8 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 	if (fd == STDIN_FILENO) {
 		return 0;
 	}
-	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
+		lock_acquire(&file_lock);
         putbuf (buffer, length);
         lock_release(&file_lock);
         return length;
@@ -159,7 +157,6 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 		char * temp_buffer = malloc(length + 1);
 		if (!read_user(buffer, length, temp_buffer)) {
 			free(temp_buffer);
-			lock_release(&file_lock);
 			exit_routine(-1);
 		}
 		free(temp_buffer);
@@ -167,63 +164,64 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 		for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         	f = list_entry(e, struct file_elem, elem);
         	if(f->fd == fd){
+        		lock_acquire(&file_lock);
           		int bytes = file_write(f->file, buffer, length);
           		lock_release(&file_lock);
           		return bytes;
         	}
     	}
 	}
-	lock_release(&file_lock);
 	return 0;
 }
 
 void seek_routine (int fd, unsigned position) {
-	lock_acquire(&file_lock);
 	struct thread *t = thread_current();
     struct file_elem * f;
     struct list_elem * e;
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
+        	lock_acquire(&file_lock);
          	file_seek(f->file , position);
+         	lock_release(&file_lock);
         }
     }
-	lock_release(&file_lock);
+	
 }
 
 unsigned tell_routine (int fd) {
-    lock_acquire(&file_lock);
+    
     struct thread *t = thread_current();
     struct file_elem * f;
     struct list_elem * e;
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
+        	lock_acquire(&file_lock);
          	int offset = file_tell(f->file);
           	lock_release(&file_lock);
          	return offset;
         }
     }
-    lock_release(&file_lock);
 	return 0;
 }
 void close_routine (int fd) {
 	if (fd == STDIN_FILENO || fd == STDOUT_FILENO) {
 		exit_routine(-1);
 	}
-    lock_acquire(&file_lock);
+    
     struct thread *t = thread_current();
     struct file_elem * f;
     struct list_elem * e;
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
+        	lock_acquire(&file_lock);
          	file_close(f->file);
+         	lock_release(&file_lock);
          	list_remove(&(f->elem));
          	free(f);
-          	lock_release(&file_lock);
          	return;
         }
     }
-    lock_release(&file_lock);
 }
