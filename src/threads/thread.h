@@ -112,7 +112,6 @@ struct thread
     struct semaphore finished_flag;     /* Semaphore to indicate if the process is terminated */
     struct semaphore allowed_finish;    /* Semaphore to indicate if the process is allowed to be terminated */
     int ret_status;                     /* The return status of the thread */
-    struct file_elem files;
 #endif
 
     /* Owned by thread.c. */

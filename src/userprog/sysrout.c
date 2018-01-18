@@ -93,28 +93,71 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);
+	} else {
+		struct thread *t = thread_current ();
+		struct file_elem * f;
+		struct list_elem * e;
+		for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        	f = list_entry(e, struct file_elem, elem);
+        	if(f->fd == fd){
+          		int bytes = file_write(f->file, buffer, length);
+          		lock_release(&file_lock);
+          		return bytes;
+        	}
+    	}
 	}
-	lock_acquire(&file_lock);
-	return length;
+	lock_release(&file_lock);
+	return 0;
 }
 
 void seek_routine (int fd, unsigned position) {
     printf("executing seek\n");
-
-	if (position == 0) {
-		// TODO
-	}
-	file_seek ( (struct file *) fd , (off_t) position);
+	lock_acquire(&file_lock);
+	struct thread *t = thread_current();
+    struct file_elem * f;
+    struct list_elem * e;
+    for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        f = list_entry(e, struct file_elem, elem);
+        if(f->fd == fd){
+         	int offset = file_seek(f->file);
+          	lock_release(&file_lock);
+         	return offset;
+        }
+    }
+	lock_release(&file_lock);
 }
 
 unsigned tell_routine (int fd) {
+    lock_acquire(&file_lock);
     printf("executing tell\n");
-
-	return (unsigned) file_tell ((struct file *) fd );
-}
+    struct thread *t = thread_current();
+    struct file_elem * f;
+    struct list_elem * e;
+    for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        f = list_entry(e, struct file_elem, elem);
+        if(f->fd == fd){
+         	int offset = file_tell(f->file);
+          	lock_release(&file_lock);
+         	return offset;
+        }
+    }
+    lock_release(&file_lock);
+	return 0;
 
 void close_routine (int fd) {
+    lock_acquire(&file_lock);
     printf("executing close\n");
-
-	// Please implement me.
+    struct thread *t = thread_current();
+    struct file_elem * f;
+    struct list_elem * e;
+    for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        f = list_entry(e, struct file_elem, elem);
+        if(f->fd == fd){
+         	file_close(f->file);
+         	list_remove(&(f->elem));
+          	lock_release(&file_lock);
+         	return;
+        }
+    }
+    lock_release(&file_lock);
 }
