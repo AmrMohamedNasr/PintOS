@@ -52,12 +52,19 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy); 
   if (tid != TID_ERROR) {
     sema_down(&chld->finished_flag);
+    bool tid_changed = false;
+    int old_tid;
     if (chld->ret_status != 0) {
+      old_tid = tid;
+      tid_changed = true;
       tid = TID_ERROR;
     } else {
       chld->ret_status = -1;
     }
     sema_up(&chld->allowed_finish);
+    if (tid_changed) {
+      process_wait(old_tid);
+    }
   }
   return tid;
 }
@@ -115,7 +122,7 @@ start_process (void *file_name_)
     push_int32_t(&if_.esp, argc);
     push_void_pointer(&if_.esp, 0);
     t->ret_status = 0;
-  } 
+  }
   sema_up(&t->finished_flag);
   sema_down(&t->allowed_finish);
   /* If load failed, quit. */
