@@ -137,6 +137,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  fd = 2;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -204,7 +205,7 @@ thread_tick (void)
     if (t->priority < top_t->priority) {
       intr_yield_on_return ();
     }
-  } 
+  }
 }
 
 void thread_swap_to_highest_pri(void) {
@@ -429,7 +430,7 @@ thread_yield (void)
       if (thread_min_mlfqs == NULL || priority_greater_func(&cur->elem, &thread_min_mlfqs->elem, NULL)) {
         thread_min_mlfqs = cur;
       }
-    } else { 
+    } else {
   	 list_insert_ordered(&ready_list, &cur->elem, &priority_greater_func, NULL);
     }
   }

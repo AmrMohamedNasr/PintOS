@@ -4,6 +4,7 @@
 #include "filesys/file.h"
 #include "filesys/off_t.h"
 #include "devices/shutdown.h"
+#include "devices/input.h"
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "userprog/process.h"
@@ -86,21 +87,21 @@ int filesize_routine (int fd) {
 int read_routine (int fd, void *buffer, unsigned length) {
     printf("executing read\n");
     lock_acquire(&file_lock);
-	if (fd == STDOUT_FILENO){
-        putbuf (buffer, length);
-	} else {
-		struct thread *t = thread_current ();
-		struct file_elem * f;
-		struct list_elem * e;
-		for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
-        	f = list_entry(e, struct file_elem, elem);
-        	if(f->fd == fd){
-          		int bytes = file_write(f->file, buffer, length);
-          		lock_release(&file_lock);
-          		return bytes;
-        	}
-    	}
+	if (fd == STDIN_FILENO){
+        buffer = input_getc();
+        return length;
 	}
+    struct thread *t = thread_current ();
+    struct file_elem * f;
+    struct list_elem * e;
+    for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        f = list_entry(e, struct file_elem, elem);
+        if(f->fd == fd){
+            int bytes = file_read(f->file, buffer, length);
+            lock_release(&file_lock);
+            return bytes;
+        }
+    }
 	lock_release(&file_lock);
 	return -1;
 }
@@ -110,7 +111,8 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);
-	} else {
+        return length;
+	} else {1
 		struct thread *t = thread_current ();
 		struct file_elem * f;
 		struct list_elem * e;
