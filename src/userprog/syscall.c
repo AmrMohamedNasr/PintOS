@@ -12,10 +12,11 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init (&tid_lock);
 }
 
 static void
-syscall_handler (struct intr_frame *f) 
+syscall_handler (struct intr_frame *f)
 {
   int32_t * sp = f->esp;
   uint32_t sys_id = *(sp);
@@ -74,7 +75,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:                  /* Close a file. */
 		close_routine(arg1);
 		no_ret = true;
-		break;  
+		break;
   }
   if (!no_ret) {
   	f->eax = ret;

@@ -93,7 +93,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int base_priority;                   /* The base priority of the thread. Not affected by priority donation */
     int priority;                       /* Priority. */
-    struct list locks;                  /* List of locks acquired by a thread */          
+    struct list locks;                  /* List of locks acquired by a thread */
     struct list_elem allelem;           /* List element for all threads list. */
     struct lock *blocked_on_lock;       /* The lock currently blocking the thread. Null if there isn't. */
     /* Data for BSD scheduler */
@@ -101,6 +101,8 @@ struct thread
     int nice;                           /* Nice value */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    struct list file_elems;             /* List of files opened by a thread */
+    int fd = 2;                             /* File Descriptors for a thread. */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -169,7 +171,7 @@ fixed_point calculate_recent_cpu(struct thread * t);
   Calculates the load average and returns the calculated value.
 */
 fixed_point calculate_load_avg(void);
-/* Swaps to the highest priority in the already sorted ready queue. 
+/* Swaps to the highest priority in the already sorted ready queue.
   Should never be called from an interrupt context.
 */
 void thread_swap_to_highest_pri(void);

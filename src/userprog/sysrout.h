@@ -5,8 +5,10 @@
 #include "lib/user/syscall.h"
 struct file_elem
 {
-	int fd;
-	struct file * file;
+
+	int fd;                     /* File descriptor for the opened File. */
+	struct file * file;         /* File opened by a thread. */
+	struct list_elem elem;      /* List element. */
 };
 /*
 Terminates Pintos by calling shutdown_power_off() (declared in threads/init.h).

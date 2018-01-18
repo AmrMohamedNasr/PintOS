@@ -9,7 +9,7 @@
 #include "userprog/process.h"
 #include <stdio.h>
 
-static struct lock file_lock;  ////mfrod n3ml init lel lock bs lsa msh 3rfa feen
+static struct lock file_lock;  /* Synchronizes file system access. */
 
 void halt_routine (void) {
     shutdown_power_off();
@@ -48,8 +48,18 @@ bool remove_routine (const char *file) {
 
 int open_routine (const char *file) {
     printf("executing open\n");
-
-	// Please implement me.
+    lock_acquire(&file_lock);
+    struct thread *t = thread_current ();
+    struct file_elem *e;
+    struct file *f = filesys_open(file);
+    if (f == NULL)
+        return -1;
+    e.file = f;
+    e.fd = t->fd;
+    t->fd = t->fd + 1;
+    list_push_front (&t->file_elems, &e.elem);
+    lock_release(&file_lock);
+    return f.fd;
 }
 
 int filesize_routine (int fd) {
