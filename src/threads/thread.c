@@ -717,6 +717,7 @@ init_thread (struct thread *t, const char *name, int priority)
     sema_init (&t->allowed_finish, 0);
     t->ret_status = -1;
     t->fd = 2;
+    list_init(&t->file_elems);
   #endif
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);

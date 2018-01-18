@@ -209,6 +209,9 @@ unsigned tell_routine (int fd) {
 	return 0;
 }
 void close_routine (int fd) {
+	if (fd == STDIN_FILENO || fd == STDOUT_FILENO) {
+		exit_routine(-1);
+	}
     lock_acquire(&file_lock);
     struct thread *t = thread_current();
     struct file_elem * f;
