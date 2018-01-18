@@ -174,6 +174,7 @@ process_exit (void)
   }
   struct file * file = filesys_open (cur->name);
   file_allow_write(file);
+  file_close (file);
   printf ("%s: exit(%d)\n", cur->name, cur->ret_status);
   sema_up (&cur->finished_flag);
   sema_down (&cur->allowed_finish);

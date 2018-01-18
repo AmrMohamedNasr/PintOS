@@ -62,6 +62,7 @@ userprog_SRC += userprog/gdt.c		# GDT initialization.
 userprog_SRC += userprog/tss.c		# TSS management.
 userprog_SRC += userprog/sysrout.c	# System routines Implementation.
 userprog_SRC += userprog/usrstack.c	# Stack controls.
+userprog_SRC += userprog/usrmem.c	# User memory access.
 
 # No virtual memory code yet.
 #vm_SRC = vm/file.c			# Some file.
