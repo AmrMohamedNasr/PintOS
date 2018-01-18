@@ -19,6 +19,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
+#include "userprog/sysrout.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -181,6 +182,12 @@ process_exit (void)
        e = list_next (e)) {
     c = list_entry (e, struct thread, parent_elem);
     process_wait(c->tid);
+  }
+  struct file_elem * f;
+  while (!list_empty (&cur->file_elems)) {
+    e = list_begin(&cur->file_elems);
+    f = list_entry(e, struct file_elem, elem);
+    close_routine(f->fd);
   }
   if (cur->prg_file != NULL) {
     file_allow_write(cur->prg_file);
