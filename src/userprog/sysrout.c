@@ -16,7 +16,8 @@ void halt_routine (void) {
 }
 
 void exit_routine (int status) {
-    thread_current ()->ret_status = status;
+    struct thread *t = thread_current ();
+    t->ret_status = status;
     thread_exit();
 }
 
@@ -84,8 +85,24 @@ int filesize_routine (int fd) {
 
 int read_routine (int fd, void *buffer, unsigned length) {
     printf("executing read\n");
-
-	// Please implement me.
+    lock_acquire(&file_lock);
+	if (fd == STDOUT_FILENO){
+        putbuf (buffer, length);
+	} else {
+		struct thread *t = thread_current ();
+		struct file_elem * f;
+		struct list_elem * e;
+		for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
+        	f = list_entry(e, struct file_elem, elem);
+        	if(f->fd == fd){
+          		int bytes = file_write(f->file, buffer, length);
+          		lock_release(&file_lock);
+          		return bytes;
+        	}
+    	}
+	}
+	lock_release(&file_lock);
+	return -1;
 }
 
 int write_routine (int fd, const void *buffer, unsigned length) {
@@ -119,7 +136,7 @@ void seek_routine (int fd, unsigned position) {
     for (e = list_begin (&t->file_elems); !list_empty (&t->file_elems) && e != list_end (&t->file_elems); e = list_next (e)) {
         f = list_entry(e, struct file_elem, elem);
         if(f->fd == fd){
-         	int offset = file_seek(f->file);
+         	int offset = file_seek(f->file , position);
           	lock_release(&file_lock);
          	return offset;
         }
