@@ -36,8 +36,6 @@ int wait_routine (pid_t id) {
 }
 
 bool create_routine (const char *file, unsigned initial_size) {
-    printf("executing create\n");
-
     lock_acquire(&file_lock);
     bool create = filesys_create(file, initial_size);
     lock_release(&file_lock);
@@ -45,8 +43,6 @@ bool create_routine (const char *file, unsigned initial_size) {
 }
 
 bool remove_routine (const char *file) {
-    printf("executing remove\n");
-
     lock_acquire(&file_lock);
 	bool remove = filesys_remove(file);
     lock_release(&file_lock);
@@ -54,7 +50,6 @@ bool remove_routine (const char *file) {
 }
 
 int open_routine (const char *file) {
-    printf("executing open\n");
     lock_acquire(&file_lock);
     struct thread *t = thread_current ();
     struct file_elem *e = malloc(sizeof(struct file_elem));
@@ -72,7 +67,6 @@ int open_routine (const char *file) {
 }
 
 int filesize_routine (int fd) {
-    printf("executing filesize\n");
     lock_acquire(&file_lock);
     struct thread *t = thread_current ();
     struct file_elem * f;
@@ -90,7 +84,6 @@ int filesize_routine (int fd) {
 }
 
 int read_routine (int fd, void *buffer, unsigned length) {
-    printf("executing read\n");
     lock_acquire(&file_lock);
 	if (fd == STDIN_FILENO){
         buffer = input_getc();
@@ -112,7 +105,6 @@ int read_routine (int fd, void *buffer, unsigned length) {
 }
 
 int write_routine (int fd, const void *buffer, unsigned length) {
-    //printf("executing write\n");
 	lock_acquire(&file_lock);
 	if (fd == STDOUT_FILENO){
         putbuf (buffer, length);
@@ -136,7 +128,6 @@ int write_routine (int fd, const void *buffer, unsigned length) {
 }
 
 void seek_routine (int fd, unsigned position) {
-    printf("executing seek\n");
 	lock_acquire(&file_lock);
 	struct thread *t = thread_current();
     struct file_elem * f;
@@ -153,7 +144,6 @@ void seek_routine (int fd, unsigned position) {
 
 unsigned tell_routine (int fd) {
     lock_acquire(&file_lock);
-    printf("executing tell\n");
     struct thread *t = thread_current();
     struct file_elem * f;
     struct list_elem * e;
@@ -170,7 +160,6 @@ unsigned tell_routine (int fd) {
 }
 void close_routine (int fd) {
     lock_acquire(&file_lock);
-    printf("executing close\n");
     struct thread *t = thread_current();
     struct file_elem * f;
     struct list_elem * e;
