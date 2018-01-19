@@ -194,8 +194,6 @@ process_exit (void)
     file_close (cur->prg_file);
   }
   printf ("%s: exit(%d)\n", cur->name, cur->ret_status);
-  sema_up (&cur->finished_flag);
-  sema_down (&cur->allowed_finish);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -212,6 +210,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up (&cur->finished_flag);
+  sema_down (&cur->allowed_finish);
 }
 
 /* Sets up the CPU for running user code in the current
