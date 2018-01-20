@@ -88,7 +88,7 @@ int open_routine (const char *file) {
             return e->fd;
         }
         prev = f2->fd;
-    }
+        }
     e->fd = t->fd;
     t->fd = t->fd + 1;
     list_push_back (&t->file_elems, &e->elem);
