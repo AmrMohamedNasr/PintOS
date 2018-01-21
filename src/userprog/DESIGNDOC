@@ -1,25 +1,17 @@
-		     +--------------------------+
-       	       	     |		CS 140		|
-		     | PROJECT 2: USER PROGRAMS	|
-		     | 	   DESIGN DOCUMENT     	|
-		     +--------------------------+
+		     +---------------------------------------------+
+       	     |		   CS 333		   |
+		     | PROJECT 2: USER PROGRAMS |
+		     | 	   DESIGN DOCUMENT     	   |
+		     +---------------------------------------------+
 
 ---- GROUP ----
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Amr Mohamed Nasr Eldine  	45
+Aya Aly Abouzeid			2
+Michael Raafat Mikhail		54
 
----- PRELIMINARIES ----
-
->> If you have any preliminary comments on your submission, notes for the
->> TAs, or extra credit, please give them here.
-
->> Please cite any offline or online sources you consulted while
->> preparing your submission, other than the Pintos documentation, course
->> text, lecture notes, and course staff.
 
 			   ARGUMENT PASSING
 			   ================
@@ -30,19 +22,56 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+Nothing added or changed.
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
+
+Argument passing is implemented in process_start. The string is first split
+and the number of arguments in it is counted and the size that will be needed 
+in the stack is calculated, with the file name which is the first argument is 
+loaded into memory using the provided load function. 
+
+If load is successful and the arguments would fit in the stack , we begin loading 
+the stack by pushing the arguments one by one into the stack. We then move the stack 
+pointer to the nearest divisible by 4 stack pointer, then we push a pointer of value 
+null into the stack, then push pointers to the start of each argument in the stack 
+starting from the last argument. 
+
+Then push a pointer to the first pointer of the first argument, push the number of 
+arguments and push the return address. Each push just decrements the stack pointer 
+by the number of bytes need to copy the value we want to push, then copying it in 
+the memory.
+
+Splitting items is done using strtok_r, all the push operations are implemented in a 
+separate file “usrstack” as described. Since we push the pointers to the start of 
+arguments in reverse order consecutively, and then push a pointer to to the first 
+pointer. We can use that pointer as an array of char pointers.
+
+If load doesn’t succeed or our calculated stack size needed is larger than a page size, 
+we end the process without setting stack.
+
 ---- RATIONALE ----
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+For synchronization, it’s a reentrant version that can be called from multiple threads 
+that avoids the limitation of strtok since it doesn’t use a global value internally like strtok.
+
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+The separation of arguments happens in user mode which would :
+
+1- it decreases the overhead in kernel since it reduces amount of handling in kernel space .
+2- increase the security of the system.
+
 
 			     SYSTEM CALLS
 			     ============
@@ -53,14 +82,97 @@ FirstName LastName <email@domain.example>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+1- struct file_elem
+{
+	int fd;                     /* File descriptor for the opened File. */
+	struct file * file;         /* File opened by a thread. */
+	struct list_elem elem;      /* List element. */
+}
+	A struct to represent the file opened by a thread, where “fd” is the file descriptor of     
+	the file and “elem” is a list element to be inserted into the list of files of a thread.
+
+2- struct thread
+  {
+#ifdef USERPROG
+    /* The data to organize process termination */
+    struct list children;               /* List of children of this thread*/
+    struct list_elem parent_elem;       /* List element to be added to parent */
+    struct semaphore finished_flag;     /* Semaphore to indicate if the process 
+										is terminated to the parent*/
+    struct semaphore allowed_finish;    /* Semaphore to indicate if the process 
+										is allowed to be terminated by the parent */
+    int ret_status;                     /* The return status of the thread */
+    struct list file_elems;             /* List of files opened by a thread */
+    int fd;                             /* File Descriptors for a thread. */
+    struct file *prg_file;              /* Program file */
+#endif
+   }
+   
+3- static struct lock file_lock
+A synchronizing lock to ensure the mutual synchronized access to the file system 
+between threads in “sysrout.c”.
+
 >> B2: Describe how file descriptors are associated with open files.
 >> Are file descriptors unique within the entire OS or just within a
 >> single process?
+
+Each single process has a file descriptor that is initialized with value 2, 
+where 0 and 1 are reserved for STDIN_FILENO and STDOUT_FILENO. Whenever a 
+file is opened, a new value for the file descriptor of the current thread 
+is associated with the opened file in a new “file_elem” struct, here we followed 
+a specific strategy to avoid the overflow of the variable fd in case of opening 
+very large number of files, where fd isn’t just incremented with each OPEN, instead, 
+we search for the first matched free fd that was previously closed and left an empty 
+slot to be filled in our list of “file_elems”, if not found, we just normally 
+increment the fd of the current thread.
+ 
+The file and it’s fd are then assigned to the new struct “file_elem” and the struct is 
+then added to the list of opened files by the current thread and the file descriptor 
+associated is later used to distinguish the file for various system calls.  
+
+File descriptors are unique within a single process.
 
 ---- ALGORITHMS ----
 
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
+
+-Read: 
+
+The read routine returns -1 if the file descriptor is STDOUT or 
+if it maps to an invalid file that doesn’t exist in the list of files 
+opened by the current thread. 
+
+If an error occurred while moving the bytes read to the user memory of address buffer,
+we release all resources and locks, and terminate the thread with error code ‘-1’.
+
+We have 2 cases, either we read from a file or we read as STDIN.
+
+For the first case, we just loop through the list of opened files to find the file descriptor 
+for the required file, if found, the file_lock is acquired to ensure file system access 
+synchronization and released after reading the length of bytes required to be returned is read 
+into a temporary kernel buffer. Then we copy the data from the kernel buffer to the user defined 
+address in user memory space.
+
+For the second case, while loop is used to read each character from the keyboard into a temp kernel 
+buffer using input_getc(), and is copied into user defined address in user memory space.
+
+-Write: 
+
+The write routine returns 0 if the file descriptor is STDIN or if it maps to an invalid 
+file that doesn’t exist in the list of files opened by the current thread.
+
+If an error occurred while moving the bytes read to the user memory of address buffer,
+we release all resources and locks, and terminate the thread with error code ‘-1’.
+
+We have 2 cases here as well, either we write into a file or we write to STDOUT.
+
+Both are the same as in Read except that we use putbuf() in writing to STDOUT and the 
+sequence of moving data is from user defined address in user memory space to a temporary 
+kernel buffer, and then from the kernel buffer to the suitable output file/console.
+
+All user memory accesses and manipulation are handled by a defined set of functions which 
+utilizes as base the functions provided in stanford documentation of this project.
 
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
@@ -69,8 +181,40 @@ FirstName LastName <email@domain.example>
 >> for a system call that only copies 2 bytes of data?  Is there room
 >> for improvement in these numbers, and how much?
 
+Case of 4096 bytes :
+Least number of page inspections needed is two , most is 4096 if we check each byte.
+
+Case of 2 bytes :
+Least and most number of page inspection needed is two.
+
+It can be improved by only checking the first and last byte of any wanted data making 
+it independent of the data size wanted.
+
+
+However, in our approach we don’t use pagedir_get_page().
+
+
+
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
+
+Wait system call calls process_wait.
+
+The parent thread call this system call to wait for one of its children threads to exit.
+
+First of all we have the thread id to wait for as a parameter, we get the current thread 
+and check for thread id of each child, if we found the thread, we check if it is ready to 
+exit, and if not we wait for this thread to announce that it is ready to exit, then the 
+parent thread removes the thread from children list and gets its return status, and allows 
+the child thread to exit.
+
+If there is no thread matches the thread id then we return -1.
+
+In process termination, a process isn’t allowed to finish unless it waits on all un-waited children,
+frees up all resources taken and is allowed to finish by its parent.
+
+This is done using to semaphores : finished_flag for the end of the child process and allowed_exit for
+allowing exit of the child process, in order to get the return status.     
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -86,12 +230,78 @@ FirstName LastName <email@domain.example>
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+We decided using method 2 described in stanford’s documentation for this project, 
+which is modifying page faults and using function will return error value if it fails 
+to read a byte, then added more complex functions that uses the base functions to provide 
+solid and flexible functionality with the same defined functions easily.
+
+We adopted the strategy of providing a uniformed interface for accessing, writing, reading 
+and checking data from user memory space into kernel variables and buffers.
+
+In these function, we return a value indicating if the operation was successful or failed. 
+So since each user uses his own user address space, we utilized this fact by always separating 
+the operations that would need locks from user memory accessing if possible so we won’t need to 
+free or release resources in case of failures by checking on the user accesses as early as possible, 
+and sometimes doing data transactions on two steps. 
+
+Example :
+
+From file to kernel buffer, then from kernel buffer to user address space which we would only need 
+the lock on synchronization of the file system which won't affect the user address space.
+
+However, if we have allocated resources or acquired locks, we would free/release them first before 
+exiting since our functions don’t perform the termination but simply indicate an error has acquired.
+
+Examples :
+
+/* Writes a byte sequence of length 'length' at user virtual address dst from src.
+   Returns true successful, false if an error occurs.
+   occurred.
+*/
+bool write_user (const void * dst, const int length, const void * src)
+
+// temp_buffer is a local malloced variable.
+lock_acquire(&file_lock);
+int bytes = file_read(f->file, temp_buffer, length);
+lock_release(&file_lock);
+if (!write_user(buffer, length, temp_buffer)) {
+	free(temp_buffer);
+   	exit_routine(-1);
+}
+free(temp_buffer);
+return bytes;
+
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
->> success/failure status passed back to the thread that calls "exec"?
+>> success/failure status passed back to the thread that calls "exec"?	
+
+This is done by using the finished_flag and allowed_finish flags and storing a 
+temporary value in ret_value member of the thread. 
+
+The parent is the only one that can signal allowed_finish and the child is the 
+only one that can signal finished_flag.
+
+After creating the child thread, the parent will check if the thread is created successfully.
+If yes, then we need to make sure that the loading was successfully, so P (parent thread) 
+waits on finished_flag before further processing.
+
+Notice that both finished_flag and allowed_finish are initialized to 0 meaning that P won’t be 
+able to continue past finished_flag unless signaled by C (child thread). When signaled, the 
+parent check the return value of C and if it isn’t the arbitrary value chosen to indicate success, 
+then loading has failed and P waits on C to remove its data from the memory and the return value is 
+changed to -1.  
+In both cases of successful/failed loading, P signals allowed_finish before returning the suitable value.
+
+C start_process operation changes the return value of itself from -1 (The default) to 0  (Arbitrary chosen 
+value) if loading was successful. At the end of start process before proceeding to execute/terminate, 
+C signals finished_flag then waits on allowed_finish which will only be signaled by its P.
+
+Notice how these operations leave our semaphores at value 0 which is important for the synchronization 
+of wait/exit.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -100,37 +310,63 @@ FirstName LastName <email@domain.example>
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+Each thread has 2 semaphores that play a major role in this operation. 
+
+A child thread ‘C’ will always have the 2 semaphores finished_flag & allowed_finish 
+with values 0 heading into its exit process.
+
+The parent is the only one that can signal allowed_finish and the child is the only one 
+that can signal finished_flag. A parent only signals allowed_finish if it got the return value 
+from the child and removed the child from its children list while a child only signals finished_flag 
+if it is about to finish and has obtained its return value.
+
+Wait process : P waits on finished_flag of C, when awakened it obtains the return value from child,
+removes it from the list of children and then signals allowed_finish.
+
+Exit process : C first waits on all its un-waited children, then closes all files belonging to it and 
+finally allow writing to its executable file again. It then frees the memory it took but doesn’t 
+terminate before doing 2 actions in this defined order : it signals finished_flag, 
+then it waits on allowed_finish. 
+
+Before C exits: current value of finished_flag is 0, so P will wait on it until it is signaled which 
+won’t happen until C finishes its execution, it signals P and waits on allowed_finish which won’t 
+allow it to pass unless P signals it, which only happens after P has obtained the return value of C. 
+After P obtains the value, and remove C from list of children, it signal allowed_finish which will then 
+allow the child to finish execution and be removed from memory. 
+
+After C exits: C will signal finished_flag and wait on allowed_finish after freeing up all resources. 
+P will then wait on finished_flag which will let it pass since its been signaled, copy the return value 
+from the child then signal allowed_finish to let the child finish execution.
+
+P terminates without waiting : as explained above, part of the termination routine for any process is 
+waiting on all un-waited children.
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
 
+
+As explained by project 2 documentation on stanford website, this technique is normally faster 
+because it takes advantage of the processor's MMU, so it tends to be used in real kernels. 
+
+So we decided to use it even if it is more complex but also taking care of providing a uniformed 
+neat interface for all interactions with user memory space for our code in “usrmem” .
+
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+-Advantages:
+Ease of binding the opened file with the associated file descriptor specified for it by the thread.
+Ease of retrieving a file back from the “file_elems” list by it’s file descriptor.
+	
+-Disadvantages: 
+The same Inode can have different places in memory for each file struct which wastes memory.
+
+We could make each file open for the first time only and let the file descriptors points to the pointer to the file. 
+We choose our approach to keep files local to threads for simplicity.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
 
-			   SURVEY QUESTIONS
-			   ================
-
-Answering these questions is optional, but it will help us improve the
-course in future quarters.  Feel free to tell us anything you
-want--these questions are just to spur your thoughts.  You may also
-choose to respond anonymously in the course evaluations at the end of
-the quarter.
-
->> In your opinion, was this assignment, or any one of the three problems
->> in it, too easy or too hard?  Did it take too long or too little time?
-
->> Did you find that working on a particular part of the assignment gave
->> you greater insight into some aspect of OS design?
-
->> Is there some particular fact or hint we should give students in
->> future quarters to help them solve the problems?  Conversely, did you
->> find any of our guidance to be misleading?
-
->> Do you have any suggestions for the TAs to more effectively assist
->> students, either for future quarters or the remaining projects?
-
->> Any other comments?
+We didn’t change it.
